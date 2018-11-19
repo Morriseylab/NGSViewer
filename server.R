@@ -1,6 +1,5 @@
 library(shiny)
 library(shinyBS)
-#library(pathview)
 library("AnnotationDbi")
 library("org.Mm.eg.db")
 library(gage)
@@ -33,7 +32,7 @@ library(limma)
 library(ggrepel)
 library(readxl)
 library(biomaRt)
-
+source("functions.R")
 #Specify user-ids and passwords
 auth=read.csv("data/authentication.csv")
 my_username <- auth$user
@@ -93,21 +92,16 @@ server <- function(input, output) {
     }
   })
 
-
-  # output$dataInfo <- renderPrint({
-  #   if (values$authenticated) "OK!!!!!"
-  #   else "You are NOT authenticated"
-  # })
-  ##################################################
-  ###################################################
-  ####### LOAD EXCEL AND POPULATE DROP DOWN #########
-  ###################################################
-  ###################################################
+  ################################################################
+  ################################################################
+  ####### LOAD EXCEL AND POPULATE DROP DOWN FOR PROJECTS #########
+  ################################################################
+  ################################################################
   
   #Read the parameter file
   readexcel = reactive({
     user=input$username
-    file = read.csv(paste("data/allusers_param.csv",sep=""))
+    file = read.csv(paste("data/param.csv",sep=""))
     if(user=="allusers"){
       file=file
     }else{
@@ -121,6 +115,25 @@ server <- function(input, output) {
     prj=excel$projects
     selectInput("projects","Select a project",as.list(sort(as.character(prj))))
   })
+  
+  ################################################################
+  ################# DISPLAY FILE LIST IN DASHBOARD ###############
+  ################################################################
+  
+  #Display file in dashboard
+  output$dashdata<- renderTable({
+    user=input$username
+    file=read.csv('data/param.csv',stringsAsFactors = F)
+    if(user=="allusers"){
+      file=file
+      colnames(file)=c("Project Name","Project Description","Old?(Y/N)","Type(RNA/Microarray)","Username")
+      file=file[order(file$`Project Name`),]
+    }else{
+      file=file[file$user==user,] %>% dplyr::select(-old:-user)
+      colnames(file)=c("Project Name","Project Description")
+      file=file[order(file$`Project Name`),]
+    }
+  }, digits = 1)
   
   ###################################################
   ###################################################
@@ -144,56 +157,45 @@ server <- function(input, output) {
     selectInput("contrast","Select a comparison",contrasts,"pick one")
   })
 
-  #Display file in dashboard
-  output$dashdata<- renderTable({
-    user=input$username
-    #read.csv(paste("data/",user,"_param.csv",sep=""))
-    file=read.csv('data/allusers_param.csv',stringsAsFactors = F)
-    if(user=="allusers"){
-      file=file
-      colnames(file)=c("Project Name","Project Description","Old?(Y/N)","Type(RNA/Microarray)","Username")
-      file=file[order(file$`Project Name`),]
-    }else{
-      file=file[file$user==user,] %>% dplyr::select(-old:-user)
-      colnames(file)=c("Project Name","Project Description")
-      file=file[order(file$`Project Name`),]
-      
-    }
-  }, digits = 1)
-  ###################################################
-  ###################################################
-  ##################### PCA PLOT ####################
-  ###################################################
-  ###################################################
+  
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  ####################################################################### PCA PLOT ######################################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  #Populate drop-down for PC to plot on x-axis
   output$pcaxoptions <- renderUI({
     selectInput("pcaxaxes","Select Principle Component to plot on the X-axis ",c(1:10))
   })
   
-  output$pcipslide <- renderUI({
-    textInput(inputId = 'pcipslide', label = "Enter top number of input genes that show maximum variance", value = '500')
-    #sliderInput("pcipslide", label = h5("Slider: Number of input genes that show maximum variance"), min = 100,max = 1000, value = 200)
-  })
-  
-  output$pcslide <- renderUI({
-    textInput(inputId = 'pcslide', label = "Enter number of genes to view in the biplot", value = '0')
-    #sliderInput("pcslide", label = h5("Slider: Number of genes to view in the biplot"), min = 2,max = 50, value = 30)
-  })
-  
+  #Populate drop-down for PC to plot on y-axis
   output$pcayoptions <- renderUI({
     selectInput("pcayaxes","Select Principle Component to plot on the Y-axis",c(1:10),selected=2)
   })
   
+  #PRint the PC's chosen to be plotted
+  output$biplottitle <- renderText({
+    text=as.character(paste("Dim",input$pcaxaxes," vs Dim",input$pcayaxes,sep=""))
+    return(text)
+  })
+  
+  #Textbox to enter number of genes to use to plot
+  output$pcipslide <- renderUI({
+    textInput(inputId = 'pcipslide', label = "Enter top number of input genes that show maximum variance", value = '500')
+  })
+  
+  #Textbox to enter number of genes to view in the biplot
+  output$pcslide <- renderUI({
+    textInput(inputId = 'pcslide', label = "Enter number of genes to view in the biplot", value = '0')
+  })
+  
+  #Checkbox to view ellipses in the PCA plot
   output$ellipse <- renderUI({
     checkboxInput("ellipse", label = "Check to view ellipses", value = FALSE)
   })
   
-  output$biplottitle <- renderText({
-    pcaxaxes=input$pcaxaxes
-    pcayaxes=input$pcayaxes
-    text=as.character(paste("Dim",pcaxaxes," vs Dim",pcayaxes,sep=""))
-    return(text)
-  })
-  
+
+  #Function for PCA plot
   plotbiplot = reactive({
     res.pca = res_pca()
     x=as.numeric(input$pcaxaxes)
@@ -236,15 +238,17 @@ server <- function(input, output) {
     }
   })
   
+  #plotting function for pca plot
   output$biplot = renderPlot({
     plotbiplot()
   })
   
+  #Button for dwnloading PCA plot
   output$dwldbiplot = renderUI({
     downloadButton('downloadbiplot', 'Download Biplot')
   }) 
   
-
+#Download function for pca plot
   output$downloadbiplot <- downloadHandler(
     filename = function() {
       paste0("biplot.pdf")
@@ -260,10 +264,16 @@ server <- function(input, output) {
   ########### VARIANCES OF PCA PLOT #################
   ###################################################
   ###################################################
-  
+  #Text explaining PCA variances
   output$pcatitle <- renderText({
     text="The proportion of variances retained by the principal components can be viewed in the scree plot. The scree plot is a graph of the eigenvalues/variances associated with components"
     return(text)
+  })
+  
+  #PLot scree plot of all PC's
+  output$pcaplot_ip = renderPlot({
+    res.pca = res_pca()
+    fviz_screeplot(res.pca, ncp=10)
   })
   
   #get expression data and perform PCA
@@ -275,7 +285,6 @@ server <- function(input, output) {
     results=fileload()
     v = results$eset
     keepGenes <- v@featureData@data
-    #keepGenes <- v@featureData@data %>% filter(!(seq_name %in% c('X','Y')) & !(is.na(SYMBOL)))
     pData<-phenoData(v)
     v.filter = v[rownames(v@assayData$exprs) %in% rownames(keepGenes),]
     Pvars <- apply(v.filter@assayData$exprs,1,var)
@@ -288,13 +297,14 @@ server <- function(input, output) {
     res.pca = PCA(t(m), graph = FALSE)
   })
   
-  #get expression data and perform PCA
+  #Extract PCA information like eigan values, variance of each PC 
   pcaplo_tab = reactive({
     res.pca =res_pca()
     eigenvalues = res.pca$eig
     return(eigenvalues)
   })
   
+  #Display above PC information in a table
   output$pcaplot_tab = DT::renderDataTable({
     DT::datatable(pcaplo_tab(),
                   extensions = c('Scroller'),
@@ -303,18 +313,13 @@ server <- function(input, output) {
                     scrollX = TRUE
                   ))
   })
-  
-  output$pcaplot_ip = renderPlot({
-    res.pca = res_pca()
-    fviz_screeplot(res.pca, ncp=10)
-  })
-  
 
   ###################################################
   ###################################################
   ##################3D PCA PLOT #####################
   ###################################################
   ###################################################
+  #PLot 3D PCA plot
   output$pcaplot3d = renderRglwidget({
     graphics.off()
     pdf(NULL)
@@ -323,18 +328,10 @@ server <- function(input, output) {
     pData=pData(results$eset)
     v=t(v)
     v= v[,apply(v, 2, var, na.rm=TRUE) != 0]
-    #      pca <- prcomp( v, scale= TRUE )
-    #      vars <- apply(pca$x, 2, var)
-    #      props <- round((vars / sum(vars))*100,1)
-    #      groups=factor(gsub('-','_',pData$maineffect))
-    
     pca <- res_pca()
     vars <- apply(pca$var$coord, 2, var)
     props <- round((vars / sum(vars))*100,1)
     groups=factor(gsub('-','_',pData$maineffect))
-    
-    
-    ########
     try(rgl.close())
     open3d()
     # resize window
@@ -352,15 +349,8 @@ server <- function(input, output) {
     l=length(levels(groups))
     ll=1:l
     y=1+(ll*15)
-    #text3d(x=70, y=y, z=0.75,levels(groups) ,col="black")
-    #points3d(x=90, y=y, z=0.75, col=as.numeric(as.factor(levels(groups))), size=6)
     legend3d("topright", legend = levels(groups), pch = 16, col=palette(),cex=1, inset=c(0.02))
-        #pdf(NULL)
-        #rgl.snapshot('./PCA_3d_test.png', fmt = "png", top = TRUE )
-        #rgl.postscript('PCA_3D_test.pdf',fmt='pdf')
-    
-    #movie3d(spin3d(), duration = 5,movie='PCA_movie',dir='./' )
-    rglwidget()
+   rglwidget()
   })
   
   ###################################################
@@ -368,7 +358,7 @@ server <- function(input, output) {
   ######## GET PROJECT DESC AND DISPLAY   ###########
   ###################################################
   ###################################################
-  #Read parameter file and get project desc for the project selected
+  #Read parameter file and get project description for the project selected
   prjdesc = reactive({
     file = readexcel()
     prj=input$projects
@@ -376,10 +366,97 @@ server <- function(input, output) {
     desc=as.character(desc)
   })
   
-  #Display text in main panel
+  #Display text in main project description panel
   output$pdesc <- renderText({
     desc=prjdesc()
   })
+  
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  ####################################################################### DOT PLOT ######################################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  
+  #Drop down menu for dot-plot x-axis grouping
+  output$boxplotcol = renderUI({ 
+    results=fileload()
+    eset=results$eset
+    pData=pData(eset) #get pheno-data
+    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
+    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
+    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
+    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
+    selectInput("color","Select an Attribute for the X-axis",bpcols) #populate drop down menu with the phenodata columns
+  })
+  
+  #Drop down menu for dot-plot color
+  output$boxplotcol2 = renderUI({ 
+    results=fileload()
+    eset=results$eset
+    pData=pData(eset) #get pheno-data
+    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
+    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
+    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
+    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
+    selectInput("color2","Color By",bpcols) #populate drop down menu with the phenodata columns
+  })
+  
+  #Checkbox for whether or not to display the minimum expression line 
+  output$minexprline = renderUI({ 
+    tagList(
+      checkboxInput("minexprline", label = "Show expression threshold line", value = FALSE),
+      bsTooltip("minexprline","Please note that not all projects have this option currently", placement = "bottom", trigger = "hover",options = NULL)
+    )
+  })
+  
+  #Extract expression data to create dot-plot
+  dotplot_out = reactive({
+    s = input$table_rows_selected #select rows from table
+    dt = datasetInput() #load limma data
+    dt$id=rownames(dt)
+    dt=data.frame(dt$id,dt[,-ncol(dt)])
+    validate(
+      need((is.data.frame(dt) && nrow(dt))!=0, "No data in table")
+    )
+    dt1 = dt[s, , drop=FALSE]#get limma data corresponding to selected row in table
+    id = as.character(dt[s,1]) 
+    results=fileload()
+    eset <- results$eset
+    pData=pData(eset) #get pheno-data
+    minexpr=pData$minexpr[1]
+    e <-data.frame(eset@phenoData@data,signal=eset@assayData$exprs[id,])
+    if(is.na(dt1$SYMBOL)) #if gene symbol does not exist,use ENSEMBL id
+    {genesymbol=dt1$ENSEMBL}
+    else{
+      genesymbol=dt1$SYMBOL} #get the gene symbol of the row selected
+    if(input$minexprline==T){
+      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
+        labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
+        stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2) + geom_hline(yintercept=minexpr, linetype="dashed", color = "red")}
+    else{
+      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
+        labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
+        stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2)
+    }
+    gg
+  })
+  
+  # plot dotplot
+  output$dotplot = renderPlot({
+    dotplot_out()
+  })
+  
+  #function to download dot plot
+  output$downloaddotplot <- downloadHandler(
+    filename = function() {
+      paste0(input$projects, '_dotplot.jpg', sep='') 
+      #paste0("dotplot.jpg")
+    },
+    content = function(file){
+      jpeg(file, quality = 100, width = 800, height = 800)
+      plot(dotplot_out())
+      dev.off()
+    })
   
   ###################################################
   ###################################################
@@ -394,7 +471,7 @@ server <- function(input, output) {
     limmadata=eval(parse(text = k))
   })
   
-  #Update datatable in tab 1 based on gene selection (upregulated, downregulated, both or none)
+  #Update limma results based on gene selection (upregulated, downregulated, both or none)
   datasetInput = reactive({
     contrast=input$contrast #select contrast
     limmadata=datasetInput0.5()
@@ -436,7 +513,7 @@ server <- function(input, output) {
     return(d)
   })
   
-  #print input file in tab1
+  #print limma results in data table
   output$table = DT::renderDataTable({
     input$lfc
     input$apval
@@ -449,9 +526,14 @@ server <- function(input, output) {
                   rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
   })
   
-
+  #Display text (contrast name) above limma table
+  output$contrdesc <- renderText({
+    contrastname=input$contrast
+    text=paste('CONTRAST:  ',contrastname,sep="   ")
+    return(text)
+  })
   
-  #download data as excel sheet
+  #download limma results data as excel sheet
   output$dwld <- downloadHandler(
     filename = function() { paste(input$projects, '.csv', sep='') },
     content = function(file) {
@@ -460,7 +542,152 @@ server <- function(input, output) {
   
   ###################################################
   ###################################################
-  #######CONDITIONAL PANEL FOR Limma ##################
+  ############# DISPLAY VOLCANO PLOT  ###############
+  ###################################################
+  ###################################################
+  #Get limma data
+  datasetInputvol = reactive({
+    limmadata=datasetInput()
+    return(limmadata)
+  })
+  
+  #Drop down to choose what genes to display on volcano plot
+  output$volcdrop <- renderUI({
+    selectInput("volcdrop", "Select input type",c('Significant genes' = "signi",'GO genes' = "go"))
+    
+  })
+  
+  #Slider to choose number of genes to display on volcano plot
+  output$volcslider <- renderUI({
+    conditionalPanel(
+      condition = "input.volcdrop == 'signi'",
+      fluidRow(
+        column(6,sliderInput("volcslider", label = h4("Select top number of genes"), min = 0,max = 25, value = 5))
+      ))
+    
+  })
+  
+  #Function to assign values to volcano plot points
+  vpt = reactive({
+    diff_df=datasetInput0.5()
+    
+    FDR=input$apval
+    lfc=input$lfc
+    
+    if(input$volcdrop=="signi"){
+      diff_df$group <- "NotSignificant"
+      # change the grouping for the entries with significance but not a large enough Fold change
+      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) < lfc ),"group"] <- "Filtered by FDR"
+      
+      # change the grouping for the entries a large enough Fold change but not a low enough p value
+      diff_df[which(diff_df['adj.P.Val'] > FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Filtered by FC"
+      
+      # change the grouping for the entries with both significance and large enough fold change
+      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Significant (Filtered by both FDR and FC)"
+    }
+    else if(input$volcdrop=="go"){
+      top_peaks2=GOHeatup()
+      diff_df$group <- "All genes"
+      diff_df[which(diff_df$SYMBOL %in% top_peaks2$SYMBOL ),"group"] <- "Selected_genes"
+    }
+    return(diff_df)
+  })
+  
+  #Function to draw the volcano plot
+  volcanoplot_out = reactive({
+    diff_df=vpt()
+    
+   if(input$volcdrop=="signi"){
+      # Find and label the top peaks..
+      n=input$volcslider
+      if(n>0){
+      top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
+      top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
+      
+      a <- list()
+      for (i in seq_len(nrow(top_peaks))) {
+        m <- top_peaks[i, ]
+        a[[i]] <- list(x = m[["logFC"]],y = -log10(m[["adj.P.Val"]]),text = m[["SYMBOL"]],xref = "x",yref = "y",showarrow = FALSE,arrowhead = 0.5,ax = 20,ay = -40)
+      }
+      p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) %>%
+        layout(annotations = a)
+        }
+      else{
+        p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)"))
+          }
+    }
+    else if(input$volcdrop=="go"){
+      # Find and label the top peaks..
+      top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
+      a <- list()
+      for (i in seq_len(nrow(top_peaks))) {
+        m <- top_peaks[i, ]
+        a[[i]] <- list(x = m[["logFC"]],y = -log10(m[["adj.P.Val"]]),text = m[["SYMBOL"]],xref = "x",yref = "y",showarrow = FALSE,arrowhead = 0.5,ax = 20,ay = -40)
+      }
+      p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) 
+      }
+    p
+  })
+  
+  #Make non-interactive plot for volcano plot download
+  volcanoplot_dout = reactive({
+    diff_df=vpt()
+    if(input$volcdrop=="signi"){
+     n=input$volcslider
+      if(n>0){
+        top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
+        top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
+        p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="")+ geom_label_repel(data=top_peaks,aes(x = top_peaks$logFC, y = -log10(top_peaks$adj.P.Val),label=top_peaks$SYMBOL)) + theme_bw()
+      }
+      else{
+        p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
+      }
+    }
+    else if(input$volcdrop=="go"){
+          top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
+       p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
+    }
+    p
+  })
+  
+  #Render and display interactive volcano plot
+  output$volcanoplot = renderPlotly({
+    input$radio
+    input$lfc
+    input$apval
+    input$volcslider
+    input$volcdrop
+    volcanoplot_out()
+  })
+  
+  #Display limma results 
+  output$table_volc = DT::renderDataTable({
+    DT::datatable(datasetInput(),
+                  extensions = c('Buttons','Scroller'),
+                  options = list(dom = 'Bfrtip',
+                                 searchHighlight = TRUE,
+                                 pageLength = 10,
+                                 lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
+                                 scrollX = TRUE,
+                                 buttons = c('copy', 'print')
+                  ),rownames=TRUE,selection = list(mode = 'single', selected =1),escape=FALSE)
+  })
+  
+  
+ #Download non-interactive volcano plot
+  output$dwldvolcanoplot <- downloadHandler(
+    filename = function() {
+      paste0("volcano.pdf")
+    },
+    content = function(file){
+      pdf(file,width=14,height = 9,useDingbats=FALSE)
+      plot(volcanoplot_dout())
+      dev.off()
+    })
+  
+  ###################################################
+  ###################################################
+  #######CONDITIONAL PANEL FOR Limma ################
   ###################################################
   ###################################################
   
@@ -492,15 +719,6 @@ server <- function(input, output) {
     return(m)
   })
   
-  #Display text (contrast name) above limma table
-  output$contrdesc <- renderText({
-    contrastname=input$contrast
-    text=paste('CONTRAST:  ',contrastname,sep="   ")
-    
-    return(text)
-  })
-  
-  
   
   #update table with the dataframe
   output$table_TRUE = DT::renderDataTable({
@@ -517,188 +735,24 @@ server <- function(input, output) {
                   ),rownames=TRUE,selection = list(mode = 'single', selected =1),escape=FALSE)
   })
   
-
+  #action button to download the table
   output$dwldmultitab = renderUI({
     downloadButton('multidwld','Download Table')
   }) 
   
+  #fucntion to download multi-contrast limma table
   output$multidwld <- downloadHandler(
     filename = function() { paste(input$projects, '_multiple_contrasts.csv', sep='') },
     content = function(file) {
       write.csv(multilimma(), file,row.names=FALSE)
     })
-  ###################################################
-  ###################################################
-  ############# DISPLAY VOLCANO PLOT  ###############
-  ###################################################
-  ###################################################
-  datasetInputvol = reactive({
-    limmadata=datasetInput()
-    #     lfc=as.numeric(input$lfc) #get logFC
-    #     apval=as.numeric(input$apval)#get adjusted P.Vals
-    #     d = limmadata
-    return(limmadata)
-  })
   
-  output$volcslider <- renderUI({
-    conditionalPanel(
-      condition = "input.volcdrop == 'signi'",
-      fluidRow(
-        column(6,sliderInput("volcslider", label = h4("Select top number of genes"), min = 0,max = 25, value = 5))
-      ))
-    
-  })
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  ####################################################### DISPLAY RAW EXPRESSION (VOOM) DATA ############################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
   
-  output$volcdrop <- renderUI({
-    selectInput("volcdrop", "Select input type",c('Significant genes' = "signi",'GO genes' = "go"))
-    
-  })
-  
-  volcanoplot_out = reactive({
-    diff_df=datasetInput0.5()
-    
-    FDR=input$apval
-    lfc=input$lfc
-    
-    if(input$volcdrop=="signi"){
-      diff_df$group <- "NotSignificant"
-      # change the grouping for the entries with significance but not a large enough Fold change
-      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) < lfc ),"group"] <- "Filtered by FDR"
-      
-      # change the grouping for the entries a large enough Fold change but not a low enough p value
-      diff_df[which(diff_df['adj.P.Val'] > FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Filtered by FC"
-      
-      # change the grouping for the entries with both significance and large enough fold change
-      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Significant (Filtered by both FDR and FC)"
-      
-      # Find and label the top peaks..
-      n=input$volcslider
-      if(n>0){
-      top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
-      top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
-      
-      a <- list()
-      for (i in seq_len(nrow(top_peaks))) {
-        m <- top_peaks[i, ]
-        a[[i]] <- list(
-          x = m[["logFC"]],
-          y = -log10(m[["adj.P.Val"]]),
-          text = m[["SYMBOL"]],
-          xref = "x",
-          yref = "y",
-          showarrow = FALSE,
-          arrowhead = 0.5,
-          ax = 20,
-          ay = -40
-        )
-      }
-      p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) %>%
-        layout(annotations = a)
-        }
-      else{
-        p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)"))
-          }
-    }
-    else if(input$volcdrop=="go"){
-      top_peaks2=GOHeatup()
-      diff_df$group <- "All genes"
-      diff_df[which(diff_df$SYMBOL %in% top_peaks2$SYMBOL ),"group"] <- "Selected_genes"
-      
-      # Find and label the top peaks..
-      top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
-      
-      a <- list()
-      for (i in seq_len(nrow(top_peaks))) {
-        m <- top_peaks[i, ]
-        a[[i]] <- list(
-          x = m[["logFC"]],
-          y = -log10(m[["adj.P.Val"]]),
-          text = m[["SYMBOL"]],
-          xref = "x",
-          yref = "y",
-          showarrow = FALSE,
-          arrowhead = 0.5,
-          ax = 20,
-          ay = -40
-        )
-      }
-      p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) 
-      }
-    p
-  })
-  
-  volcanoplot_dout = reactive({
-    diff_df=datasetInput0.5()
-    
-    FDR=input$apval
-    lfc=input$lfc
-    
-    if(input$volcdrop=="signi"){
-      diff_df$group <- "NotSignificant"
-      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) < lfc ),"group"] <- "Filtered by FDR"
-      diff_df[which(diff_df['adj.P.Val'] > FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Filtered by FC"
-      diff_df[which(diff_df['adj.P.Val'] < FDR & abs(diff_df['logFC']) > lfc ),"group"] <- "Significant (Filtered by both FDR and FC)"
-      
-      # Find and label the top peaks..
-      n=input$volcslider
-      if(n>0){
-        top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
-        top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
-        p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="")+ geom_label_repel(data=top_peaks,aes(x = top_peaks$logFC, y = -log10(top_peaks$adj.P.Val),label=top_peaks$SYMBOL)) + theme_bw()
-      }
-      else{
-        p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
-      }
-    }
-    else if(input$volcdrop=="go"){
-      top_peaks2=GOHeatup()
-      diff_df$group <- "All genes"
-      diff_df[which(diff_df$SYMBOL %in% top_peaks2$SYMBOL ),"group"] <- "Selected_genes"
-      
-      # Find and label the top peaks..
-      top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
-       p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
-    }
-    p
-  })
-  output$table_volc = DT::renderDataTable({
-    DT::datatable(datasetInputvol(),
-                  extensions = c('Buttons','Scroller'),
-                  options = list(dom = 'Bfrtip',
-                                 searchHighlight = TRUE,
-                                 pageLength = 10,
-                                 lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
-                                 scrollX = TRUE,
-                                 buttons = c('copy', 'print')
-                  ),rownames=TRUE,selection = list(mode = 'single', selected =1),escape=FALSE)
-  })
-  
-  output$volcanoplot = renderPlotly({
-   # withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-      input$radio
-      input$lfc
-      input$apval
-      input$volcslider
-      input$volcdrop
-      volcanoplot_out()
-   # })
-  })
-  
- 
-  output$dwldvolcanoplot <- downloadHandler(
-    filename = function() {
-      paste0("volcano.pdf")
-    },
-    content = function(file){
-      pdf(file,width=14,height = 9,useDingbats=FALSE)
-      plot(volcanoplot_dout())
-      dev.off()
-    })
-  ###################################################
-  ###################################################
-  ############## DISPLAY VOOM DATA ##################
-  ###################################################
-  ###################################################
   #load voom data from eset
   datasetInput3 = reactive({
     results=fileload()
@@ -716,7 +770,7 @@ server <- function(input, output) {
     return(genes)
   })
   
-  #print voom or expression data file in tab2
+  #print voom or expression data file
   output$table3 = DT::renderDataTable({
     DT::datatable(datasetInput33(),
                   extensions = c('Buttons','Scroller'),
@@ -728,22 +782,25 @@ server <- function(input, output) {
                                  buttons = c('copy', 'print')
                   ),rownames=FALSE,caption= "Voom data")
   })
-
+  
+  #action button to download the raw expression matrix
   output$dwldrawtab = renderUI({
     downloadButton('rawdwld','Download Raw Data')
   }) 
   
+  #fucntion to download voom expression data table
   output$rawdwld <- downloadHandler(
     filename = function() { paste(input$projects, '_rawdata.csv', sep='') },
     content = function(file) {
       write.csv(datasetInput33(), file,row.names=FALSE)
     })
   
-  ###################################################
-  ###################################################
-  ############## DISPLAY PHENO DATA ##################
-  ###################################################
-  ###################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  ################################################################ DISPLAY PHENO DATA ###################################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  
   #load pheno from eset
   phenofile = reactive({
     results=fileload()
@@ -767,96 +824,13 @@ server <- function(input, output) {
                   ),rownames=FALSE,caption= "Sample data")
   })
   
-
-  ###################################################
-  ###################################################
-  ##################### DOT PLOT ####################
-  ###################################################
-  ###################################################
-  #create user interface for dot-plot drop down menu
-  output$boxplotcol = renderUI({ 
-    results=fileload()
-    eset=results$eset
-    pData=pData(eset) #get pheno-data
-    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
-    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
-    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
-    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
-    selectInput("color","Select an Attribute for the X-axis",bpcols) #populate drop down menu with the phenodata columns
-  })
+  #######################################################################################################################################################
+  #######################################################################################################################################################
+  ############################################################### CAMERA OUTPUT DISPLAY #################################################################
+  #######################################################################################################################################################
+  #######################################################################################################################################################
   
-  output$boxplotcol2 = renderUI({ 
-    results=fileload()
-    eset=results$eset
-    pData=pData(eset) #get pheno-data
-    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
-    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
-    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
-    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
-    selectInput("color2","Color By",bpcols) #populate drop down menu with the phenodata columns
-  })
- 
-  output$minexprline = renderUI({ 
-    tagList(
-  checkboxInput("minexprline", label = "Show expression threshold line", value = FALSE),
-    bsTooltip("minexprline","Please note that not all projects have this option currently", placement = "bottom", trigger = "hover",options = NULL)
-    )
-  })
-  
-  dotplot_out = reactive({
-    s = input$table_rows_selected #select rows from table
-    dt = datasetInput() #load limma data
-    dt$id=rownames(dt)
-    dt=data.frame(dt$id,dt[,-ncol(dt)])
-    validate(
-      need((is.data.frame(dt) && nrow(dt))!=0, "No data in table")
-    )
-    dt1 = dt[s, , drop=FALSE]#get limma data corresponding to selected row in table
-    id = as.character(dt[s,1]) 
-    results=fileload()
-    eset <- results$eset
-    pData=pData(eset) #get pheno-data
-    minexpr=pData$minexpr[1]
-    e <-data.frame(eset@phenoData@data,signal=eset@assayData$exprs[id,])
-    if(is.na(dt1$SYMBOL)) #if gene symbol does not exist,use ENSEMBL id
-    {genesymbol=dt1$ENSEMBL}
-    else{
-      genesymbol=dt1$SYMBOL} #get the gene symbol of the row selected
-    if(input$minexprline==T){
-    gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
-      labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
-      stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2) + geom_hline(yintercept=minexpr, linetype="dashed", color = "red")}
-    else{
-      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
-        labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
-        stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2)
-    }
-    gg
-  })
-  
-  # output dotplot
-  output$dotplot = renderPlot({
-    dotplot_out()
-  })
-  
-  output$downloaddotplot <- downloadHandler(
-    filename = function() {
-      paste0(input$projects, '_dotplot.jpg', sep='') 
-      #paste0("dotplot.jpg")
-    },
-    content = function(file){
-      jpeg(file, quality = 100, width = 800, height = 800)
-      plot(dotplot_out())
-      dev.off()
-    })
-  
-  ###################################################
-  ###################################################
-  ############# CAMERA OUTPUT DISPLAY ##############
-  ###################################################
-  ###################################################
-  
-  #populate camera dropdown menu with the genesets based on the project RData
+  #populate camera dropdown menu in the sidebar with the genesets based on the project RData
   output$cameradd = renderUI({
     results=fileload()
     contrast=input$contrast
@@ -866,11 +840,8 @@ server <- function(input, output) {
     selectInput("cameradd","Select a Gene Set",cameradd)
   })
   
-  #Get camera data from Rdata file
+  #Get camera data from Rdata file for the chosen contrast
   geneid = reactive({
-#     validate(
-#       need(input$camera, "Please Click on the button to view Camera results ")
-#     )
     results=fileload()
     cameradd=input$cameradd
     contrast=input$contrast #get user input for contrast/comparison
@@ -890,7 +861,7 @@ server <- function(input, output) {
     return(cam) # return datatable with camera results
   })
   
-  # print out camera data in tab gsea
+  # print out camera results in a table
   output$tablecam = DT::renderDataTable({
     input$camera
     input$cameradd
@@ -908,7 +879,16 @@ server <- function(input, output) {
     })
   })
   
-
+  #Generate text title for the gene list table
+  output$camdesc <- renderText({
+    s = input$tablecam_rows_selected
+    dt = geneid() 
+    dt = as.character(dt[s, , drop=FALSE]) 
+    camname=dt[1]
+    text=paste('Gene list for Camera term :',camname,sep="")
+    return(text)
+  })
+  
   #get the gene-list for every row in camera results table
   campick2 = reactive({
     results=fileload()
@@ -929,15 +909,12 @@ server <- function(input, output) {
     #get gene list from indices
     if (cameradd == "GO")
     {
-      #res2=datasetInput0.5()
       k=paste('res2$ENTREZID[cameraind$`',cam$name,'`]',sep='')}
     else{
       k=paste('res2$ENTREZID[cameraind$',cam$name,']',sep='')
     }
     genes=eval(parse(text = k)) #get entrez id's corresponding to indices
-    #genesid=res[match(res$ENTREZID,genes),]
     genesid=res[res$ENTREZID %in% genes,] #get limma data corresponding to entrez id's
-    #rownames(genesid)=genesid$id
     return(data.frame(genesid)) #return the genelist
   })
   
@@ -965,72 +942,6 @@ server <- function(input, output) {
       write.csv(geneid(), file)
     })
   
-  #Generate text title for the gene list table
-  output$camdesc <- renderText({
-    s = input$tablecam_rows_selected
-    dt = geneid() 
-    dt = as.character(dt[s, , drop=FALSE]) 
-    camname=dt[1]
-    text=paste('Gene list for Camera term :',camname,sep="")
-    
-    return(text)
-  })
-  
-  
-  ###################################################
-  ###################################################
-  ############### ENRICHMENT PLOT ###################
-  ###################################################
-  ###################################################
-  
-  output$eplottab = DT::renderDataTable({
-    input$eplot
-    input$camera
-    input$cameradd
-    input$contrast
-    DT::datatable(geneid(),
-                  extensions = c('Buttons','Scroller'),
-                  options = list(dom = 'Bfrtip',
-                                 searchHighlight = TRUE,
-                                 pageLength = 10,
-                                 lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
-                                 scrollX = TRUE,
-                                 buttons = c('copy', 'print')
-                  ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1))
-  })
-  
-  output$eplotdesc <- renderText({
-    res=geneid()
-    s=input$eplottab_rows_selected 
-    row=res[s, ,drop=FALSE]
-    id=row$name
-    text=paste('Enrichment plot for :',id,sep="")
-    
-    return(text)
-  })
-  
-  
-  output$en_plot <- renderPlot({
-    res=geneid()
-    cameradd=input$cameradd
-    contrast=input$contrast
-    lim=datasetInput0.5()
-    stat=data.frame(t=lim$t)
-    stat$id=rownames(lim)
-    stat=stat[order(stat$id),]
-    stat2=stat$t
-    names(stat2)=stat$id
-    s=input$eplottab_rows_selected 
-    row=res[s, ,drop=FALSE]
-    id=row$name
-    results=fileload()
-    contrasts=input$contrast
-    y=paste('results$camera$',contrast,'$',cameradd,'$indices$`',id,"`",sep='')
-    ind=eval(parse(text =y))
-    barcodeplot(stat2,index=ind)
-  })
-  
-
   ###################################################
   ###################################################
   ######### CREATE HEATMAP FROM CAMERA ##############
@@ -1044,67 +955,25 @@ server <- function(input, output) {
     
   })
   
-  #create heatmap function
-  camheatmap <- function(){
+  #Set limit for number of genes that can be viewed in the heatmap
+  output$hmplimcam <- renderUI({
+    pval=campick2() 
+    top_expr=datasetInput3()
+    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
+    mx=nrow(top_expr)
+    sliderInput("hmplimcam", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
+  })
+  
+  #Create scale for heatmap
+  output$hmpscale_out2 = renderPlot({
+    hmpscaletest(hmpcol=input$hmpcol2,voom=datasetInput3(),checkbox=input$checkbox2)
+  })
+
+  #create heatmap for heatmap
+  camheatmap = reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    results=fileload()
-    pd=pData(results$eset)
-    expr <- heatmapcam() #voom expression data of all genes corresponding to selected row in camera datatable
-    pval=campick2() #gene list from camera
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      expr$ENSEMBL=rownames(expr)
-      expr=inner_join(expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      expr$id=rownames(expr)
-      pval$id=rownames(pval)
-      expr=inner_join(expr,pval,by=c('id'='id'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    hmplim=input$hmplimcam
-    top_expr=as.data.frame(expr)
-    top_expr=top_expr[1:hmplim,]
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    samples=as.character(rownames(pd))
-    top_expr=top_expr %>% dplyr::select(samples)
-    if(input$hmpsamp2==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-#       results=fileload()
-#       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    
-    
+    top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
+                       contrast=input$contrast)
     sym=rownames(top_expr)
     #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
@@ -1112,105 +981,64 @@ server <- function(input, output) {
     if(input$checkbox2==TRUE){
       d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby2,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
     else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby2,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
-  }
-  ####################################################################################################################################################
-  camheatmapalt <- function(){
-    results=fileload()
-    pd=pData(results$eset)
-    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    expr <- heatmapcam() #voom expression data of all genes corresponding to selected row in camera datatable
-    pval=campick2() #gene list from camera
-    #           expr$ENSEMBL=rownames(expr)
-    #           #           pval<-expr[rownames(voom) %in% rownames(genesid),]
-    #           expr=inner_join(expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-    #           #rownames(expr)=expr$SYMBOL
-    #           rownames(expr)=make.names(expr$SYMBOL,unique=T)
-    #           expr=expr %>% select(-ENSEMBL:-t)
-    
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      expr$ENSEMBL=rownames(expr)
-      expr=inner_join(expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      expr$id=rownames(expr)
-      pval$id=rownames(pval)
-      expr=inner_join(expr,pval,by=c('id'='id'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    
-    hmplim=input$hmplimcam
-    #top_expr=data.frame(expr[,-1])
-    #           if(hmplim==0)
-    #           {
-    #             top_expr=data.frame(expr)}
-    #           else{
-    top_expr=data.frame(expr)
-    top_expr=top_expr[1:hmplim,]
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    # }
-    samples=as.character(pd$sample_name)
-    top_expr=top_expr[,eval(samples)]
-        if(input$hmpsamp2==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-#       results=fileload()
-#       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    sym=rownames(top_expr)
-    #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
-    ind = apply(top_expr, 1, var) == 0
-    top_expr <- top_expr[!ind,]
-    if(input$checkbox2==TRUE){
-      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
-    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
-  }
+  })
   
-  ######################################################################################################################################################       
-
-  ##################################################
-  ###################################################
-  ################ SPIA PATHWAY ANALYSIS#############
-  ###################################################
-  ###################################################
+  # Render heatmap for camera genes
+  output$camheatmap <- renderD3heatmap({
+    input$hmpcol #user input-color palette
+    input$clusterby #user input-cluster by
+    input$checkbox #user input-reverse colors
+    input$gene #user input-slider input for number of genes
+    input$genelist
+    input$makeheat
+    input$gage
+    input$go_dd
+    input$table4_rows_selected
+    input$tablecam_rows_selected
+    input$projects
+    input$contrast
+    input$cameradd
+    input$hmpsamp2
+    input$hmplimcam
+    camheatmap()
+  })
   
+  #Create non-interactive heatmap for download
+    camheatmapalt = reactive({
+      dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+      top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
+                     contrast=input$contrast)
+      sym=rownames(top_expr)
+      #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
+      ind = apply(top_expr, 1, var) == 0
+      top_expr <- top_expr[!ind,]
+      if(input$checkbox2==TRUE){
+        aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
+      else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
+    })
+    
+    #Download camera heatmap
+    output$downloadcamheatmap <- downloadHandler(
+      filename = function(){
+        paste0('camera_heatmap','.pdf',sep='')
+      },
+      content = function(file){
+        pdf(file,width=9,height = 14,useDingbats=FALSE)
+        camheatmapalt()
+        dev.off()
+      })
+    
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  ################################################################## SPIA PATHWAY ANALYSIS################################################################
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  #For the chosen contrast, get SPIA results from the RData 
   spia_op <- reactive({
-#     validate(
-#       need(input$runspia, "Please Click on the button to run SPIA ")
-#     )
     results=fileload()
     contrast=input$contrast #get user input for contrast/comparison
     c=paste('results$spia$',contrast,sep='') #get SPIA data corresponding to the contrast chosen
     sp=eval(parse(text = c)) #convert string to variable
-    #spia_result=data.frame(name=rownames(sp),sp)
     spia_result=data.frame(sp)
     validate(
       need(nrow(spia_result) > 1, "No Results")
@@ -1219,13 +1047,12 @@ server <- function(input, output) {
     return(spia_result) 
   })
   
-  
+  #Display SPIA results in a table
   output$spiaop <- DT::renderDataTable({
     input$runspia
     input$contrast
     input$projects
-   # withProgress(session = session, message = 'Calculating...',detail = 'This may take a while...',{
-      isolate({
+   isolate({
         DT::datatable(spia_op(),escape = FALSE,selection = list(mode = 'single', selected =1),
                       extensions = c('Buttons','Scroller'),
                       options = list(
@@ -1236,17 +1063,26 @@ server <- function(input, output) {
                         scrollX = TRUE,
                         buttons = c('copy', 'print')
                       ),rownames=FALSE)
-    #  })
     })
   })
   
+  #Display the SPIA term selected from table above the genelist
+  output$spiadesc <- renderText({
+    s = input$spiaop_rows_selected
+    dt = spia_op() 
+    dt = dt[s, , drop=FALSE]
+    camname=dt$Name
+    text=paste('Gene list for SPIA term :',camname,'-',dt[2],sep="")
+    return(text)
+  })
+  
+  #Get genelist for SPIA term selected from the table of SPIA results
   spiagenes = reactive({
     spiaid=spia_op() 
     final_res=datasetInput()
     s=input$spiaop_rows_selected 
     row=spiaid[s, ,drop=FALSE]
     id=paste("mmu",row$ID,sep="")
-    #keggid = substr(keggid, start=1, stop=8)
     allgenelist=keggLink("mmu",id) #for each kegg id, get gene list
     p=strsplit(allgenelist,":")
     genes_entrez=sapply(p,"[",2)
@@ -1254,16 +1090,7 @@ server <- function(input, output) {
     return(genelist) #return the genelist
   })
   
-  output$spiadesc <- renderText({
-    s = input$spiaop_rows_selected
-    dt = spia_op() 
-    dt = dt[s, , drop=FALSE]
-    camname=dt$Name
-    text=paste('Gene list for SPIA term :',camname,'-',dt[2],sep="")
-    
-    return(text)
-  })
-  
+  #Render table to display the genelist per SPAI term
   output$spiagenes = DT::renderDataTable({
     DT::datatable(spiagenes(),
                   extensions = c('Buttons','Scroller'),
@@ -1275,22 +1102,21 @@ server <- function(input, output) {
                                  buttons = c('copy', 'print')
                   ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1,caption="Genelist"))
   })
-  
-  
 
-  
+  #Download function to download SPIA results as a csv file
   output$dwldspia <- downloadHandler(
     filename = function() { paste(input$projects,'_',input$contrast, '_spia.csv', sep='') },
     content = function(file) {
       write.csv(spia_op(), file)
     })
   
-  ###################################################
-  ###################################################
-  ######### CREATE HEATMAP FROM SPIA ##############
-  ###################################################
-  ###################################################
-  #extract voom expression data of all genes corresponding to selected row in camera datatable
+  #######################################################
+  #######################################################
+  ######### CREATE HEATMAP FROM SPIA ####################
+  #######################################################
+  #######################################################
+  
+  #extract voom expression data of all genes corresponding to selected row in spia datatable
   heatmapspia <- reactive({
     genesid=spiagenes()  #gene list from camera
     voom=as.data.frame(datasetInput3())#voom data
@@ -1298,67 +1124,54 @@ server <- function(input, output) {
     
   })
   
-  #create heatmap function
-  spiaheatmap <- function(){
+  #get max and min genes per SPIA term to show on slider
+  output$hmplimspia <- renderUI({
+    pval=spiagenes() 
+    top_expr=datasetInput3()
+    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
+    mx=nrow(top_expr)
+    sliderInput("hmplimspia", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
+  })
+  
+  #Generate a heatmap color scale
+  output$hmpscale_out2spia = renderPlot({
+    hmpscaletest(hmpcol=input$hmpcolspia,voom=datasetInput3(),checkbox=input$checkboxspia)
+  })
+  
+  #Function to generate d3 camera heatmap
+  camheatmap = reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    results=fileload()
-    pd=pData(results$eset)
-    expr <- heatmapspia() #voom expression data of all genes corresponding to selected row in camera datatable
-    pval=spiagenes() #gene list from camera
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      expr$ENSEMBL=rownames(expr)
-      expr=inner_join(expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      expr$id=rownames(expr)
-      pval$id=rownames(pval)
-      expr=inner_join(expr,pval,by=c('id'='id'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    hmplim=input$hmplimspia
-    top_expr=as.data.frame(expr)
-    top_expr=top_expr[1:hmplim,]
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    samples=as.character(rownames(pd))
-    top_expr=top_expr %>% dplyr::select(samples)
-    if(input$hmpsamp2spia==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      #       results=fileload()
-      #       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    
-    
+    top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
+                        contrast=input$contrast)
+    sym=rownames(top_expr)
+    #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
+    ind = apply(top_expr, 1, var) == 0
+    top_expr <- top_expr[!ind,]
+    if(input$checkbox2==TRUE){
+      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby2,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
+    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby2,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
+  })
+  
+  # Render SPIA heatmap 
+  output$spiaheatmap <- renderD3heatmap({
+    input$hmpcolspia #user input-color palette
+    input$clusterbyspia #user input-cluster by
+    input$checkboxspia #user input-reverse colors
+    input$gene #user input-slider input for number of genes
+    input$genelist
+    input$spiaop_rows_selected
+    input$projects
+    input$contrast
+    input$hmpsamp2spia
+    input$hmplimspia
+    spiaheatmap()
+  })
+  
+  #create SPIA heatmap function
+  spiaheatmap <- reactive({
+    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    top_expr=heatmapfun(results=fileload(),expr=heatmapspia(),pval=spiagenes(),file = readexcel(),prj=input$projects,hmplim=input$hmplimspia,hmpsamp=input$hmpsamp2spia,
+                        contrast=input$contrast)
     sym=rownames(top_expr)
     #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
@@ -1366,66 +1179,13 @@ server <- function(input, output) {
     if(input$checkboxspia==TRUE){
       d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterbyspia,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcolspia))(30),labRow = sym)}
     else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterbyspia,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcolspia)))(30),labRow = sym)}
-  }
-  ####################################################################################################################################################
-  spiaheatmapalt <- function(){
-    results=fileload()
-    pd=pData(results$eset)
+  })
+  
+  #Create non-interactive SPIA heatmap function for download
+  spiaheatmapalt <- reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    expr <- heatmapspia() #voom expression data of all genes corresponding to selected row in camera datatable
-    pval=spiagenes() #gene list from camera
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      expr$ENSEMBL=rownames(expr)
-      expr=inner_join(expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      expr$id=rownames(expr)
-      pval$id=rownames(pval)
-      expr=inner_join(expr,pval,by=c('id'='id'))
-      expr=expr[order(expr$adj.P.Val),]
-      rownames(expr)=make.names(expr$SYMBOL,unique=T)
-      if(old=="N"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        expr=expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    
-    hmplim=input$hmplimspia
-    top_expr=data.frame(expr)
-    top_expr=top_expr[1:hmplim,]
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
-    samples=as.character(pd$sample_name)
-    top_expr=top_expr[,eval(samples)]
-    if(input$hmpsamp2spia==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      #       results=fileload()
-      #       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    validate(
-      need(nrow(top_expr)>1, "No results")
-    )
+    top_expr=heatmapfun(results=fileload(),expr=heatmapspia(),pval=spiagenes(),file = readexcel(),prj=input$projects,hmplim=input$hmplimspia,hmpsamp=input$hmpsamp2spia,
+                        contrast=input$contrast)
     sym=rownames(top_expr)
     #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
@@ -1433,18 +1193,27 @@ server <- function(input, output) {
     if(input$checkboxspia==TRUE){
       aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcolspia))(30),labRow = sym)}
     else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcolspia)))(30),labRow = sym)}
-  }
+  })
   
-  ##################################################
-  ##################################################
-  ############## GAGE GENE ONTOLOGY ################
-  ##################################################
-  ##################################################
+  #Download SPIA heatmap
+  output$downloadspiaheatmap <- downloadHandler(
+    filename = function(){
+      paste0('SPIA_heatmap','.pdf',sep='')
+    },
+    content = function(file){
+      pdf(file,width=9,height = 14,useDingbats=FALSE)
+      spiaheatmapalt()
+      dev.off()
+    })
   
+  ######################################################################################################################################################
+  ######################################################################################################################################################
+  ################################################################ GAGE GENE ONTOLOGY ##################################################################
+  ######################################################################################################################################################
+  ######################################################################################################################################################
+  
+  #Run gage and get results
   datasetInput7 = reactive({
-#     validate(
-#       need(input$gage, "Please Select Ontology")
-#     )
     final_res=datasetInput0.5() #get limma data
     logfc=final_res$fc #get FC values from limma data
     names(logfc)=final_res$ENTREZID # get entrez ids for each row
@@ -1466,14 +1235,10 @@ server <- function(input, output) {
     else if(input$projects %in% prj2){
       organism="human"
     }
-    
-    #organism=pd$organism[1]
-    
     if(organism=="human")
     {
       data(go.sets.hs) #load GO data from gage
       data(go.subs.hs)
-      
       if(input$gage=='BP')
       {
         gobpsets = go.sets.hs[go.subs.hs$BP]
@@ -1493,7 +1258,6 @@ server <- function(input, output) {
     {
       data(go.sets.rn) #load GO data from gage
       data(go.subs.rn)
-      
       if(input$gage=='BP')
       {
         gobpsets = go.sets.rn[go.subs.rn$BP]
@@ -1531,7 +1295,6 @@ server <- function(input, output) {
         go_res = gage(logfc, gsets=gomfsets, same.dir=TRUE)
       }
     }
-    
     return(go_res)
   })
   
@@ -1558,16 +1321,14 @@ server <- function(input, output) {
     return(go_up)
   })
   
-  #Print GO data in datatable
+  #Print GO results in datatable
   output$table4 = DT::renderDataTable({
-    #input$ga
     input$go_dd
     input$gage
     input$radio
     input$project
     input$contrast
-   # withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-      isolate({
+   withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
         DT::datatable(datasetInput8(),
                       extensions = c('Buttons','Scroller'),
                       options = list(dom = 'Bfrtip',
@@ -1577,12 +1338,10 @@ server <- function(input, output) {
                                      scrollX = TRUE,
                                      buttons = c('copy','print')
                       ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1))
-    #  })
     })
   })
   
-
-  
+  # Download function to get GO results in csv file
   output$downloadgo <- downloadHandler(
     filename = function() { paste('GO_',input$projects,'_',input$contrast,'_',input$gage,'_',input$go_dd,'.csv', sep='') },
     content = function(file) {
@@ -1594,6 +1353,16 @@ server <- function(input, output) {
   ############## GET GENES FROM  GO #################
   ###################################################
   ###################################################
+  #Text title for gene list table
+  output$godesc <- renderText({
+    s = input$table4_rows_selected
+    dt = datasetInput8() #load GO data
+    dt = dt[s, , drop=FALSE] #get GO data corresponding to selected row in table
+    goid=dt$GO_id
+    text=paste('Gene list for GO term :',goid,sep="")
+    return(text)
+  })
+  
   # get GO associated genes
   GOHeatup = reactive({
     s = input$table4_rows_selected
@@ -1629,434 +1398,118 @@ server <- function(input, output) {
   output$x4 = DT::renderDataTable({
     input$gage
     input$go_dd
-    #input$ga
     input$radio
     input$project
     input$contrast
     goheatup=GOHeatup()
   },caption="Gene List",escape=FALSE)
   
-  #Text title for gene list table
-  output$godesc <- renderText({
-    s = input$table4_rows_selected
-    dt = datasetInput8() #load GO data
-    dt = dt[s, , drop=FALSE] #get GO data corresponding to selected row in table
-    goid=dt$GO_id
-    text=paste('Gene list for GO term :',goid,sep="")
-    
-    return(text)
-  })
-  
+  #Download function to get GO gene list as csv file
   output$downloadgogene <- downloadHandler(
     filename = function() { paste('GO_',input$projects,'_',input$contrast,'_',input$gage,'_',input$go_dd,'.csv', sep='') },
     content = function(file) {
       write.csv(GOHeatup(), file)
     })
+  
   ###################################################
   ###################################################
   ########## MAKE HEATMAP WITH GO ###################
   ###################################################
   ###################################################
-  #plot heatmap
-  goheatmapup <- function(){
-    results=fileload()
-    pd=pData(results$eset)
-    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol3
+  #Set limit for number of genes that can be viewed in the heatmap
+  output$hmplimgo <- renderUI({
     pval=GOHeatup()
-    hmplim=input$hmplimgo
+    top_expr=datasetInput3()
+    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
+    mx=nrow(top_expr)
+    sliderInput("hmplimgo", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
+  })
+  
+  #Generate a heatmap color scale
+  output$hmpscale_out3 = renderPlot({
+    hmpscaletest(hmpcol=input$hmpcol3,voom=datasetInput3(),checkbox=input$checkbox3)
+  })
+  
+  #plot heatmap
+  goheatmapup <- reactive({
+    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     top_expr=datasetInput3() 
     top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]#voom expression data of all genes corresponding to selected row in GO datatable
-    top_expr=as.data.frame(top_expr)
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      top_expr$ENSEMBL=rownames(top_expr)
-      top_expr=inner_join(top_expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      top_expr=top_expr[order(top_expr$adj.P.Val),]
-      #rownames(top_expr)=top_expr$SYMBOL
-      rownames(top_expr)=make.names(top_expr$SYMBOL,unique=T)
-      if(old=="N"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      top_expr$id=rownames(top_expr)
-      pval$id=rownames(pval)
-      top_expr=inner_join(top_expr,pval,by=c('id'='id'))
-      top_expr=top_expr[order(top_expr$adj.P.Val),]
-      rownames(top_expr)=make.names(top_expr$SYMBOL,unique=T)
-      if(old=="N"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    top_expr=top_expr[1:hmplim,]
-    
-    validate(
-      need(nrow(top_expr) >1 , "No results")
-    )
-    samples=as.character(rownames(pd))
-    top_expr=top_expr %>% dplyr::select(samples)
-    if(input$hmpsamp3==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-#       results=fileload()
-#       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-    sample=as.character(rownames(sample))
-    top_expr=top_expr %>% dplyr::select(sample)}
-    
-    #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
+    top_expr=heatmapfun(results=fileload(),expr=top_expr,pval=GOHeatup(),file = readexcel(),prj=input$projects,hmplim=input$hmplimgo,hmpsamp=input$hmpsamp3,
+                        contrast=input$contrast)
+   #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
     top_expr <- top_expr[!ind,]
     sym=rownames(top_expr)
     if(input$checkbox3==TRUE){
       d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
     else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
-  }
+  })
   
-  goheatmapupalt <- function(){
-    results=fileload()
-    pd=pData(results$eset)
+  # render D3heatmap for GO genes
+  output$goheatmap <- renderD3heatmap({
+    input$hmpcol #user input-color palette
+    input$clusterby #user input-cluster by
+    input$checkbox #user input-reverse colors
+    input$gene #user input-slider input for number of genes
+    input$genelist
+    input$makeheat
+    input$gage
+    input$go_dd
+    input$table4_rows_selected
+    input$tablecam_rows_selected
+    input$projects
+    input$contrast
+    input$cameradd
+    input$hmpsamp3
+    input$hmplimgo
+    goheatmapup()
+  })
+  
+  #function for non-interactive heatmap for download
+  goheatmapupalt <- reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol3
-    pval=GOHeatup() #genelist from GO
-    hmplim=input$hmplimgo
     top_expr=datasetInput3() 
     top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]#voom expression data of all genes corresponding to selected row in GO datatable
-    top_expr=as.data.frame(top_expr)
-    #sym=pval$SYMBOL
-    #     hmplim=input$hmplim
-    #     top_expr=datasetInput3() #voom expression data of all genes corresponding to selected row in GO datatable
-    #     top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
-    #     top_expr=as.data.frame(top_expr)
-    #     top_expr$ENSEMBL=rownames(top_expr)
-    #     top_expr=inner_join(top_expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-    #     rownames(top_expr)=top_expr$SYMBOL
-    #     rownames(top_expr)=make.names(top_expr$SYMBOL,unique=T)
-    #     top_expr=top_expr %>% select(-ENSEMBL:-link)
-    file = readexcel()
-    prj=input$projects
-    old=file$old[file$projects %in% prj]
-    old=as.character(old)
-    seq=file$seq[file$projects %in% prj]
-    seq=as.character(seq)
-    if(seq=="R"){
-      top_expr$ENSEMBL=rownames(top_expr)
-      top_expr=inner_join(top_expr,pval,by=c('ENSEMBL'='ENSEMBL'))
-      top_expr=top_expr[order(top_expr$adj.P.Val),]
-      #rownames(top_expr)=top_expr$SYMBOL
-      rownames(top_expr)=make.names(top_expr$SYMBOL,unique=T)
-      if(old=="N"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-t)}
-      else if(old=="Y"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    else if(seq=="M"){
-      top_expr$id=rownames(top_expr)
-      pval$id=rownames(pval)
-      top_expr=inner_join(top_expr,pval,by=c('id'='id'))
-      top_expr=top_expr[order(top_expr$adj.P.Val),]
-      rownames(top_expr)=make.names(top_expr$SYMBOL,unique=T)
-      if(old=="N"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-t)
-      }
-      else if(old=="Y"){
-        top_expr=top_expr %>% dplyr::select(-ENSEMBL:-adj.P.Val)
-      }
-    }
-    top_expr=top_expr[1:hmplim,]
-    sym=rownames(top_expr)
-    validate(
-      need(nrow(top_expr) >1 , "No results")
-    )
-    samples=as.character(pd$sample_name)
-    top_expr=top_expr[,eval(samples)]
-    if(input$hmpsamp3==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-#       results=fileload()
-#       pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
+    top_expr=heatmapfun(results=fileload(),expr=top_expr,pval=GOHeatup(),file = readexcel(),prj=input$projects,hmplim=input$hmplimgo,hmpsamp=input$hmpsamp3,
+                        contrast=input$contrast)
+    
     #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
     top_expr <- top_expr[!ind,]
     if(input$checkbox3==TRUE){
       aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv =TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
     else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
-  }
+  })
 
-  ###################################################
-  ###################################################
-  ####### CREATE HEATMAP FOR LIMMA DATA##############
-  ###################################################
-  ###################################################
+  #Download GO heatmap
+  output$downloadgoheatmap <- downloadHandler(
+    filename = function(){
+      paste0('GO_heatmap','.pdf',sep='')
+    },
+    content = function(file){
+      pdf(file,width=9,height = 14,useDingbats=FALSE)
+      goheatmapupalt()
+      dev.off()
+    })
   
-  # Get gene list from user
-  datasetInput41 = reactive({
-    #     validate(
-    #       need(input$genelist, "Please input Genelist")
-    #     )
-    file=input$genelistfile
-    genes=read.table(file$datapath) #get complete gene list as string
-    df=as.vector(genes$V1)
-    df=tolower(df)
-    firstup <- function(x) {
-      substr(x, 1, 1) <- toupper(substr(x, 1, 1))
-      x
-    }
-    df=firstup(df)
-    results=fileload()
-    pd=pData(results$eset)
-    org=unique(pd$organism)
-    
-    if(org=="human"){
-      dataset="hsapiens_gene_ensembl"
-    }
-    else if(org=="Rat"){
-      dataset="rnorvegicus_gene_ensembl"
-    }
-    else{
-      dataset="mmusculus_gene_ensembl"
-    }
-    ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
-    #     p=strsplit(genes,",") #split string by ','
-    #     genelist=sapply(p,"[") #get array of strings with gene id's
-    
-    #load limma and voom data
-    limma=datasetInput()
-    voom=datasetInput3()
-    #get expression values of the genes in the gene list
-    # user-defined identifier for the gene list
-    if(input$selectidentifier=='ensembl')
-    {
-      #ensembl = useEnsembl(biomart="ensembl", dataset="mmusculus_gene_ensembl")
-      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
-      
-    }
-    else if(input$selectidentifier=='entrez')
-    {
-      #ensembl = useEnsembl(biomart="ensembl", dataset="mmusculus_gene_ensembl")
-      genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
-      
-      
-      #       limma$id<-rownames(limma)
-      #       ensembleid=limma$id[limma$ENTREZID %in% genelist]
-      #       sym=limma[limma$ENTREZID %in% genelist,]
-      #       sym=sym[,c("ENSEMBL","SYMBOL")]
-      #       expr_vals=voom[rownames(voom) %in% ensembleid,]
-      #       expr_vals=merge(expr_vals,sym,by="row.names")
-      #       rownames(expr_vals)=expr_vals$Row.names
-      #       expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
-    }
-    else if(input$selectidentifier=='genesym')
-    {
-      #ensembl = useEnsembl(biomart="ensembl", dataset="mmusculus_gene_ensembl")
-      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
-      
-      #       limma$id<-rownames(limma)
-      #       ensembleid=limma$id[limma$SYMBOL %in% genelist]
-      #       sym=limma[limma$SYMBOL %in% genelist,]
-      #       sym=sym[,c("ENSEMBL","SYMBOL")]
-      #       expr_vals=voom[rownames(voom) %in% ensembleid,]
-      #       expr_vals=merge(expr_vals,sym,by="row.names")
-      #       rownames(expr_vals)=expr_vals$Row.names
-      #       expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
-    }
-    
-    sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(ENSEMBL,SYMBOL)
-    #sym=sym[,c("ENSEMBL","SYMBOL")]
-    expr_vals=merge(voom,sym,by="row.names")
-    rownames(expr_vals)=expr_vals$Row.names
-    expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
-    
-    validate(
-      need(nrow(expr_vals) > 1, "Please Check Identifier chosen or Select genelist from Raw Expression Data tab")
-    )
-    #     validate(
-    #       need(nrow(expr_vals)== nrow(genelist), "One or more of the genes entered does not exist. Check list for typos and verify using Raw Expression Data tab")
-    #     )
-    return(expr_vals)
+  #########################################################################################################################################################
+  #########################################################################################################################################################
+  ########################################################## CREATE HEATMAP FOR LIMMA DATA#################################################################
+  #########################################################################################################################################################
+  #########################################################################################################################################################
+  #Text title for type of heatmap being displayed in the heatmap tab
+  output$htitle <- renderText({
+    hmip=input$hmip
+    if(input$hmip=="genenum"){text="Heatmap of Top Genes "}
+    else if(input$hmip=="geneli"){text="Heatmap of Genelist "}
+    else if(input$hmip=="vargenes"){text="Heatmap of top n variable genes "}
   })
   
-  var.genes = reactive({
-    n=as.numeric(input$vgene)
-    results=fileload()
-    v = results$eset
-    keepGenes <- v@featureData@data
-    #keepGenes <- v@featureData@data %>% filter(!(seq_name %in% c('X','Y')) & !(is.na(SYMBOL)))
-    pData<-phenoData(v)
-    v.filter = v[rownames(v@assayData$exprs) %in% rownames(keepGenes),]
-    Pvars <- apply(v.filter@assayData$exprs,1,var)
-    select <- order(Pvars, decreasing = TRUE)[seq_len(min(n,length(Pvars)))]
-    v.var <-v.filter[select,]
-    m<-v.var@assayData$exprs
-    rownames(m) <- v.var@featureData@data$SYMBOL
-    m=as.data.frame(m)
-    m=unique(m)
-    return(m)
+  #manually create scale (colorkey) for heatmap
+  output$hmpscale_out = renderPlot({
+    hmpscaletest(hmpcol=input$hmpcol,voom=datasetInput3(),checkbox=input$checkbox)
   })
-  ###################################################
-  ###################################################
-  ####### TOP VARIABLE GENES  #######################
-  ###################################################
-  ###################################################
-  varheatmap <- function(){
-    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol #user input-color palette
-    #hmplim=input$hmplim
-    top_expr <- var.genes()
-    # results=fileload()
-    # v = results$eset
-    # keepGenes <- v@featureData@data
-    # pval <- datasetInput4()
-    # #get expression values of genes with highest pvals
-    # top_expr=expr[match(rownames(pval),rownames(expr)),]
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      if(input$projects =="MoGene2_Dave"){
-        ct1="Hopx"
-        ct2="SPC"
-      }
-      results=fileload()
-      pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    #top_expr=top_expr[1:hmplim,]
-    #sym=pval$SYMBOL
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, hmpcol))(30))}
-    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30))}
-  }
-  
-  varheatmapalt <- function(){
-    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol #user input-color palette
-    #hmplim=input$hmplim
-    top_expr <- var.genes()
-    #pval <- datasetInput4()
-    #get expression values of genes with highest pvals
-    #top_expr=expr[match(rownames(pval),rownames(expr)),]
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      results=fileload()
-      pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    #top_expr=top_expr[1:hmplim,]
-    #sym=pval$SYMBOL
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$checkbox==TRUE){
-      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, hmpcol))(30))}
-    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30))}
-  }
-  
-  ###################################################
-  ###################################################
-  ####### ENTER GENELIST ############################
-  ###################################################
-  ###################################################
-  
-  #create heatmap function for gene-list given by user
-  heatmap2 = function(){
-    dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol#user input-color palette
-    expr = datasetInput41()
-    sym=expr$SYMBOL
-    expr2=data.frame(expr[,-ncol(expr)])
-    validate(
-      need(nrow(expr2)>1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      results=fileload()
-      pd=pData(results$eset)
-      if(input$projects =="MoGene2_Dave"){
-        ct1="Hopx"
-        ct2="SPC"
-      }
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      expr2=expr2[,eval(sample)]}
-    
-    #rownames(expr2)=expr[,1]
-    validate(
-      need(nrow(expr2)>1, "No results")
-    )
-    if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
-  }
-  
-  heatmap2alt = function(){
-    dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol#user input-color palette
-    expr = datasetInput41()
-    sym=expr$SYMBOL
-    expr2=data.frame(expr[,-ncol(expr)])
-    validate(
-      need(nrow(expr2)>1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      results=fileload()
-      pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      expr2=expr2[,eval(sample)]}
-    
-    #rownames(expr2)=expr[,1]
-    validate(
-      need(nrow(expr2)>1, "No results")
-    )
-    if(input$checkbox==TRUE){
-      aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
-  }
   
   ###################################################
   ###################################################
@@ -2089,21 +1542,15 @@ server <- function(input, output) {
     n<-input$gene #number of genes selected by user (input from slider)
     d<-datasetInput()
     sortby=input$sortby
-    
     if(sortby=='sortnone'){
       res<-d[order(d$adj.P.Val),]
-    }
-    else if(sortby=='sortab'){
+    }else if(sortby=='sortab'){
       res<-d[order(-abs(d$fc)),]
-    }
-    else if(sortby=='sortpos'){
+    }else if(sortby=='sortpos'){
       res<-d[order(-d$fc),]
-    }
-    else if(sortby=='sortneg'){
+    }else if(sortby=='sortneg'){
       res<-d[order(d$fc),]
     }
-    
-    #res<-d[order(d$adj.P.Val),]
     if(n>nrow(d)){
       reqd_res=res[1:nrow(d),]} #get top n number of genes
     else{
@@ -2114,203 +1561,171 @@ server <- function(input, output) {
   
   
   #create heatmap function for top n genes
-  heatmap <- function(){
+  heatmap <- reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol #user input-color palette
-    #hmplim=input$hmplim
-    expr <- datasetInput3()
-    pval <- datasetInput4()
-    #get expression values of genes with highest pvals
-    top_expr=expr[match(rownames(pval),rownames(expr)),]
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      if(input$projects =="MoGene2_Dave"){
-        ct1="Hopx"
-        ct2="SPC"
-      }
-      results=fileload()
-      pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    #top_expr=top_expr[1:hmplim,]
+    pval=datasetInput4()
+    top_expr= createheatmap(results=fileload(),expr=datasetInput3(),pval=pval,hmpsamp=input$hmpsamp,contrast=input$contrast)
+    # if(input$projects =="MoGene2_Dave"){
+    #   ct1="Hopx"
+    #   ct2="SPC"
+    # }
     sym=pval$SYMBOL
     validate(
       need(nrow(top_expr) > 1, "No results")
     )
     if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
-  }
+      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
+    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+  })
   
-  heatmapalt <- function(){
+  #alternate hearmap function for download
+  heatmapalt <- reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    hmpcol=input$hmpcol #user input-color palette
-    #hmplim=input$hmplim
-    expr <- datasetInput3()
-    pval <- datasetInput4()
-    #get expression values of genes with highest pvals
-    top_expr=expr[match(rownames(pval),rownames(expr)),]
-    validate(
-      need(nrow(top_expr) > 1, "No results")
-    )
-    if(input$hmpsamp==F){
-      contrast=input$contrast
-      contr=strsplit(contrast,"_vs_")
-      ct1=sapply(contr,"[",1)
-      ct2=sapply(contr,"[",2)
-      results=fileload()
-      pd=pData(results$eset)
-      sample=pd$sample_name[pd$maineffect %in% c(ct1,ct2)]
-      sample=as.character(sample)
-      top_expr=top_expr[,eval(sample)]}
-    #top_expr=top_expr[1:hmplim,]
+    pval=datasetInput4()
+    top_expr= createheatmap(results=fileload(),expr=datasetInput3(),pval=pval,hmpsamp=input$hmpsamp,contrast=input$contrast)
     sym=pval$SYMBOL
     validate(
       need(nrow(top_expr) > 1, "No results")
     )
     if(input$checkbox==TRUE){
-      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
+      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
+    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+  })
+  
+  ###################################################
+  ###################################################
+  ####### ENTER GENELIST ############################
+  ###################################################
+  ###################################################
+  # Get gene list from user, annotate to ENSEMBL id and get their expression values
+  datasetInput41 = reactive({
+    file=input$genelistfile
+    genes=read.table(file$datapath) #get complete gene list as string
+    df=as.vector(genes$V1)
+    df=tolower(df)
+    firstup <- function(x) {
+      substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+      x
+    }
+    df=firstup(df)
+    results=fileload()
+    pd=pData(results$eset)
+    org=unique(pd$organism)
+    
+    if(org=="human"){
+      dataset="hsapiens_gene_ensembl"
+    }
+    else if(org=="Rat"){
+      dataset="rnorvegicus_gene_ensembl"
+    }
+    else{
+      dataset="mmusculus_gene_ensembl"
+    }
+    ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
+    #load limma and voom data
+    limma=datasetInput()
+    voom=datasetInput3()
+    #get expression values of the genes in the gene list
+    # user-defined identifier for the gene list
+    if(input$selectidentifier=='ensembl')
+    {
+      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
+      genelist=genes$ensembl_gene_id
+    }
+    else if(input$selectidentifier=='entrez')
+    {
+      genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
+      genelist=genes$ensembl_gene_id
+    }
+    else if(input$selectidentifier=='genesym')
+    {
+      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
+      genelist=genes$ensembl_gene_id
+    }
+    sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(ENSEMBL,SYMBOL)
+    expr_vals=merge(voom,sym,by="row.names")
+    rownames(expr_vals)=expr_vals$Row.names
+    expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
+    validate(
+      need(nrow(expr_vals) > 1, "Please Check Identifier chosen or Select genelist from Raw Expression Data tab")
+    )
+    return(expr_vals)
+  })
+  
+  #create heatmap function for gene-list given by user
+  heatmap2 = function(){
+    dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    expr = datasetInput41()
+    expr2=data.frame(expr[,-ncol(expr)])
+    top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
+    validate(
+      need(nrow(expr2)>1, "No results")
+    )
+    if(input$checkbox==TRUE){
+      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
+    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
   }
   
-  #manually create scale (colorkey) for heatmap
+  heatmap2alt = function(){
+    dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    expr = datasetInput41()
+    expr2=data.frame(expr[,-ncol(expr)])
+    top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
+  if(input$checkbox==TRUE){
+      aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
+    else{aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+  }
   
-  hmpscale <- reactive({
-    hmpcol=input$hmpcol #user input-color palette
-    voom=datasetInput3()
-    min=min(voom)
-    max=max(voom)
-    val=sort(c(seq(min,max, length.out = 5)),decreasing=TRUE)
-    df <- data.frame(x = rep(1, 5),y = val,z = factor(1:5))
-    if(input$checkbox==FALSE){
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-    else{
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol,direction = -1)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-  })
-  
-  output$hmpscale_out = renderPlot({
-    hmpscale()
-  })
-  
-  hmpscale2 <- reactive({
-    hmpcol=input$hmpcol2 #user input-color palette
-    voom=datasetInput3()
-    min=min(voom)
-    max=max(voom)
-    val=sort(c(seq(min,max, length.out = 5)),decreasing=TRUE)
-    df <- data.frame(x = rep(1, 5),y = val,z = factor(1:5))
-    if(input$checkbox2==FALSE){
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-    else{
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol,direction = -1)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
+  ###################################################
+  ###################################################
+  ####### TOP VARIABLE GENES  #######################
+  ###################################################
+  ###################################################
+  #Extract top n (user-selected) variable genes
+  var.genes = reactive({
+    n=as.numeric(input$vgene)
+    results=fileload()
+    v = results$eset
+    keepGenes <- v@featureData@data
+    #keepGenes <- v@featureData@data %>% filter(!(seq_name %in% c('X','Y')) & !(is.na(SYMBOL)))
+    pData<-phenoData(v)
+    v.filter = v[rownames(v@assayData$exprs) %in% rownames(keepGenes),]
+    Pvars <- apply(v.filter@assayData$exprs,1,var)
+    select <- order(Pvars, decreasing = TRUE)[seq_len(min(n,length(Pvars)))]
+    v.var <-v.filter[select,]
+    m<-v.var@assayData$exprs
+    rownames(m) <- v.var@featureData@data$SYMBOL
+    m=as.data.frame(m)
+    m=unique(m)
+    return(m)
   })
   
-  hmpscale3 <- reactive({
-    hmpcol=input$hmpcol3 #user input-color palette
-    voom=datasetInput3()
-    min=min(voom)
-    max=max(voom)
-    val=sort(c(seq(min,max, length.out = 5)),decreasing=TRUE)
-    df <- data.frame(x = rep(1, 5),y = val,z = factor(1:5))
-    if(input$checkbox3==FALSE){
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-    else{
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol,direction = -1)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
+  #D3 heatmap for top n variable genes
+  varheatmap <- reactive({
+    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    top_expr= createheatmap(results=fileload(),expr=var.genes(),hmpsamp=input$hmpsamp,contrast=input$contrast)
+    validate(
+      need(nrow(top_expr) > 1, "No results")
+    )
+    if(input$checkbox==TRUE){
+      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
+    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   })
   
-  hmpscalespia <- reactive({
-    hmpcol=input$hmpcolspia #user input-color palette
-    voom=datasetInput3()
-    min=min(voom)
-    max=max(voom)
-    val=sort(c(seq(min,max, length.out = 5)),decreasing=TRUE)
-    df <- data.frame(x = rep(1, 5),y = val,z = factor(1:5))
-    if(input$checkboxspia==FALSE){
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-    else{
-      ggplot(df, aes(x, y)) +geom_tile(aes(fill = z))+scale_fill_brewer( type = "div" , palette = hmpcol,direction = -1)+guides(fill=FALSE)+theme(axis.title.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.y=element_blank())+coord_flip()
-    }
-    
-    
+  # Alternate function to download non-interactive heatmap of top n variable genes
+  varheatmapalt <- reactive({
+    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    top_expr= createheatmap(results=fileload(),expr=var_genes(),hmpsamp=input$hmpsamp,contrast=input$contrast)
+    validate(
+      need(nrow(top_expr) > 1, "No results")
+    )
+    if(input$checkbox==TRUE){
+      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
+    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   })
   
-  output$hmpscale_out2 = renderPlot({
-    hmpscale2()
-  })
-  
-  output$hmpscale_out2spia = renderPlot({
-    hmpscalespia()
-  })
-  
-  output$hmpscale_out3 = renderPlot({
-    hmpscale3()
-  })
-  #Set limit for number of genes that can be viewed in the heatmap
-  output$hmplimcam <- renderUI({
-    #expr <- heatmapcam() 
-    pval=campick2() 
-    #       rownames(expr)=pval$SYMBOL
-    #       top_expr=as.data.frame(expr)
-    top_expr=datasetInput3()
-    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
-    mx=nrow(top_expr)
-    sliderInput("hmplimcam", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
-  })
-  
-  #Set limit for number of genes that can be viewed in the heatmap
-  output$hmplimspia <- renderUI({
-    pval=spiagenes() 
-    top_expr=datasetInput3()
-    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
-    mx=nrow(top_expr)
-    sliderInput("hmplimspia", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
-  })
-  
-  #Set limit for number of genes that can be viewed in the heatmap
-  output$hmplimgo <- renderUI({
-    pval=GOHeatup()
-    top_expr=datasetInput3()
-    top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]
-    mx=nrow(top_expr)
-    sliderInput("hmplimgo", label = h5("Select number of genes to view in the heatmap"), min = 2,max =mx, value = mx)
-  })
-  
-  output$hmpsamp <- renderUI({
-    checkboxInput("hmpsamp", label = "View Heatmap of all samples", value = TRUE)
-  })
-  output$hmpsamp2 <- renderUI({
-    checkboxInput("hmpsamp2", label = "View Heatmap of all samples", value = TRUE)
-  })
-  output$hmpsamp3 <- renderUI({
-    checkboxInput("hmpsamp3", label = "View Heatmap of all samples", value = TRUE)
-   })
-  
-  output$hmpsamp2spia <- renderUI({
-    checkboxInput("hmpsamp2spia", label = "View Heatmap of all samples", value = TRUE)
-  })
-  
-  #Text title for type of heatmap being displayed in the heatmap tab
-  output$htitle <- renderText({
-    hmip=input$hmip
-    if(input$hmip=="genenum"){text="Heatmap of Top Genes "}
-    else if(input$hmip=="geneli"){text="Heatmap of Genelist "}
-  })
-  
-  # make heatmap for genes
+
+  # Render d3 heatmap function 
   output$heatmap <- renderD3heatmap({
     input$hmpcol #user input-color palette
     input$clusterby #user input-cluster by
@@ -2339,138 +1754,20 @@ server <- function(input, output) {
       if(input$hmip == 'genenum'){heatmap()}
       else if(input$hmip == 'geneli'){heatmap2()}
       else if(input$hmip == 'vargenes' ){varheatmap()}
-      #else if(input$hmip == 'hmpgo'){goheatmapup()}
     })
   })
-  
-  # make heatmap for genes
-  output$camheatmap <- renderD3heatmap({
-    input$hmpcol #user input-color palette
-    input$clusterby #user input-cluster by
-    input$checkbox #user input-reverse colors
-    input$gene #user input-slider input for number of genes
-    input$genelist
-    input$makeheat
-    input$gage
-    input$go_dd
-    #input$ga
-    input$table4_rows_selected
-    input$tablecam_rows_selected
-    #input$radio
-    input$projects
-    input$contrast
-    input$cameradd
-    input$hmpsamp2
-    input$hmplimcam
-    #input$lfc
-    #input$apval
-    #input$sortby
-    #if user selected enter n num of genes, call heatmap() and if user entered genelist, call heatmap2()
-    #isolate({
-    camheatmap()
-    #})
-  })
-  
-  # make heatmap for genes
-  output$spiaheatmap <- renderD3heatmap({
-    input$hmpcolspia #user input-color palette
-    input$clusterbyspia #user input-cluster by
-    input$checkboxspia #user input-reverse colors
-    input$gene #user input-slider input for number of genes
-    input$genelist
-    input$spiaop_rows_selected
-    input$projects
-    input$contrast
-    input$hmpsamp2spia
-    input$hmplimspia
-    spiaheatmap()
-    
-  })
-  
-  # make heatmap for genes
-  output$goheatmap <- renderD3heatmap({
-    input$hmpcol #user input-color palette
-    input$clusterby #user input-cluster by
-    input$checkbox #user input-reverse colors
-    input$gene #user input-slider input for number of genes
-    input$genelist
-    input$makeheat
-    input$gage
-    input$go_dd
-    #input$ga
-    input$table4_rows_selected
-    input$tablecam_rows_selected
-    #input$radio
-    input$projects
-    input$contrast
-    input$cameradd
-    input$hmpsamp3
-    input$hmplimgo
-    #input$lfc
-    #input$apval
-    #input$sortby
-    #if user selected enter n num of genes, call heatmap() and if user entered genelist, call heatmap2()
-    #isolate({
-    goheatmapup()
-    #})
-  })
-  
-  #Download heatmaps 
+
+  #Download function for heatmaps 
   output$downloadheatmap <- downloadHandler(
     filename = function(){
       paste0('heatmap','.pdf',sep='')
     },
     content = function(file){
-      #png(file)
-      #jpeg(file, quality = 100, width = 800, height = 1300)
       pdf(file,width=9,height =14,useDingbats=FALSE)
       if(input$hmip == 'genenum'){heatmapalt()}
       else if(input$hmip == 'geneli'){heatmap2alt()}
-             else if(input$hmip == 'vargenes' ){varheatmapalt()}
-      #       else if(input$hmip == 'hmpgo'){goheatmapupalt()}
-      dev.off()
-    })
-  
-  #Download heatmaps 
-  output$downloadcamheatmap <- downloadHandler(
-    filename = function(){
-      paste0('camera_heatmap','.pdf',sep='')
-    },
-    content = function(file){
-      # png(file)
-      # jpeg(file, quality = 100, width = 800, height = 1300)
-      pdf(file,width=9,height = 14,useDingbats=FALSE)
-      camheatmapalt()
-      dev.off()
-    })
-  
-  #Download heatmaps 
-  output$downloadgoheatmap <- downloadHandler(
-    filename = function(){
-      paste0('GO_heatmap','.pdf',sep='')
-    },
-    content = function(file){
-      # png(file)
-      # jpeg(file, quality = 100, width = 800, height = 1300)
-      pdf(file,width=9,height = 14,useDingbats=FALSE)
-      goheatmapupalt()
+      else if(input$hmip == 'vargenes' ){varheatmapalt()}
       dev.off()
     })
 
-  #Download heatmaps 
-  output$downloadspiaheatmap <- downloadHandler(
-    filename = function(){
-      paste0('SPIA_heatmap','.pdf',sep='')
-    },
-    content = function(file){
-      # png(file)
-      # jpeg(file, quality = 100, width = 800, height = 1300)
-      pdf(file,width=9,height = 14,useDingbats=FALSE)
-      spiaheatmapalt()
-      dev.off()
-    })
-  
-  
-
-  
 }#end of server

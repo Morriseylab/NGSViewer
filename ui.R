@@ -17,13 +17,13 @@ ui <- dashboardPage(
                               ".shiny-output-error:before { visibility: hidden; }"
                    ),
                    tags$head(tags$style(HTML(".sidebar { height: 250vh; overflow-y: auto; }" ))),
+                   
                    sidebarMenu(
                    menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
                    uiOutput("projects"),
                    fluidRow(
                      column(12,uiOutput("contrasts"))
                    ),
-                   #sidebarMenu(
                      menuItem('PCA-Plot', tabName = 'pcaplot', icon = icon('hand-o-right'), 
                               menuSubItem("PCA Plot", tabName = "pcaplot"),
                               menuSubItem('Display Variances', tabName = 'var'),
@@ -54,6 +54,7 @@ ui <- dashboardPage(
                      menuItem("Help Page", tabName = "help", icon = icon("hand-o-right")))
   ),#end dashboardSidebar
   
+  ######################################################################################################################################
   
   dashboardBody(
     tags$head(
@@ -68,6 +69,7 @@ ui <- dashboardPage(
                 tableOutput("dashdata")
               )
       ),
+      ######################################################################################################################################
       tabItem(tabName = "pcaplot",
               box(
                 width = 10, status = "primary",solidHeader = TRUE,
@@ -89,24 +91,22 @@ ui <- dashboardPage(
               ),br(),
               fluidRow(
                 column(6,uiOutput("dwldbiplot")))
-              
       ),
-      
+      ######################################################################################################################################
       tabItem(tabName = "var",
               box(width = 10, status = "primary",solidHeader = TRUE,title = "Variances of principal Components",
                   textOutput("pcatitle"),plotOutput("pcaplot_ip",width=700,height=400),br()),
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Amount of Variation explained by each Principle Component",DT::dataTableOutput('pcaplot_tab'))),
       
+      ######################################################################################################################################
       tabItem(tabName = "3dplot",h4("3D plot"),br(),br(),rglwidgetOutput("pcaplot3d",width = "850px", height = "750px")),
       
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      
+      ######################################################################################################################################
       tabItem(tabName = "geneselection",
               box(width = 10, status = "primary",solidHeader = TRUE,title = "Project Description",
                   textOutput("pdesc")),
               
+       #Dot plot box
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "Dot Plot of the gene of interest",
                     fluidRow(
@@ -114,10 +114,9 @@ ui <- dashboardPage(
                       column(6,uiOutput("boxplotcol2"))
                     ),
                     uiOutput("minexprline"),
-                    
                     plotOutput('dotplot')
-                    #column(6,plotOutput('dotplot',width = 'auto'))
                 ),
+       #Gene selection control box
                 box(width = 4, status = "primary",solidHeader = TRUE,title = "Gene Selection",
                     radioButtons("radio", label = h4("Gene Selection"),
                                  choices = c("None" = 'none',"Upregulated" = 'up', "Downregulated" = 'down', "Both" = 'both'),
@@ -129,42 +128,42 @@ ui <- dashboardPage(
                       column(6,downloadButton('dwld','Download results table')),
                       column(6,downloadButton('downloaddotplot', 'Download Dot plot')))
                 )),
-              
+       #LImma data table       
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Limma data",
                   h5(p(div(span("Note:fc - Fold Change",style="color:red")))),
                   br(),textOutput("contrdesc"),br(),DT::dataTableOutput('table'))),
       
+      ######################################################################################################################################
       tabItem(tabName = "volcanoplot",
               box(width = 8, status = "primary",solidHeader = TRUE,title = "Volcano Plot",
-                  plotlyOutput("volcanoplot",width=800,height=700)),
+                  plotlyOutput("volcanoplot",height=700)),
               box(width = 4, status = "primary",solidHeader = TRUE,title = "Controls",
                   uiOutput("volcdrop"),br(),uiOutput("volcslider"),br(),
                   downloadButton('dwldvolcanoplot', 'Download Volcano plot')),
                 br(),DT::dataTableOutput('table_volc')),
+      ######################################################################################################################################
+      
       tabItem(tabName = "multilimma",DT::dataTableOutput('table_TRUE'),fluidRow(uiOutput("dwldmultitab"))),
       
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       tabItem(tabName = "voom",DT::dataTableOutput('table3'),
               fluidRow(uiOutput("dwldrawtab"))
       ),
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       tabItem(tabName = "phenofile",DT::dataTableOutput('phenofile')),
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       tabItem(tabName = "heatmap",
               box(width = 8, status = "primary",solidHeader = TRUE,title = "Heatmap",
                   textOutput("htitle"),br(),
                   fluidRow(
-                    column(6,uiOutput('hmplim')),
+                    column(6,h3("")),
                     column(width = 3, offset = 2,plotOutput('hmpscale_out',width = 200,height = 65))
                   ),
                   fluidRow(
-                    column(6,uiOutput('hmpsamp')),
+                    column(6,checkboxInput("hmpsamp", label = "View Heatmap of all samples", value = TRUE)),
                     column(6,h4(""))
                   ),
                   d3heatmapOutput('heatmap',width=550,height=900)
@@ -196,10 +195,7 @@ ui <- dashboardPage(
               )#end box
       ),#end tabItem
       
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      
+      ######################################################################################################################################
       tabItem(tabName = "camera",
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "Camera Heatmap",
@@ -208,27 +204,22 @@ ui <- dashboardPage(
                       column(width = 3, offset = 2,plotOutput('hmpscale_out2',width = 200,height = 65))
                     ),
                     fluidRow(
-                      column(6,uiOutput('hmpsamp2')),
+                      column(6,checkboxInput("hmpsamp2", label = "View Heatmap of all samples", value = TRUE)),
                       column(6,h4(""))
                     ),
-                    d3heatmapOutput('camheatmap',width=550,height=900)),
-                box(width = 4, status = "primary",solidHeader = TRUE,title = "Controls",
+                    d3heatmapOutput('camheatmap',height=900)),
+               
+                 box(width = 4, status = "primary",solidHeader = TRUE,title = "Controls",
                     selectInput("hmpcol2", "Select Heatmap Color Palette",c('YlGnBu' = "YlGnBu",'RdBu' = "RdBu",'YlOrRd' = "YlOrRd",'PRGn'="PRGn", 'Blues' = "Blues")),
                     selectInput("clusterby2", "Cluster By",c('Both'="both",'Row' = "row",'Column' = "column",'None' = "none")),
                     checkboxInput("checkbox2", label = "Reverse Colors", value = FALSE),
                     br(),
                     downloadButton('downloadcamheatmap', 'Download Heatmap'))),
+              
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Table",
                   DT::dataTableOutput('tablecam'),textOutput("camdesc"),DT::dataTableOutput('campick3'))
-              
-              
-              
-      ),#end tabItem
-      
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      
+   ),#end tabItem
+      ######################################################################################################################################
       tabItem(tabName = "spia", 
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "SPIA Heatmap",
@@ -237,7 +228,7 @@ ui <- dashboardPage(
                       column(width = 3, offset = 2,plotOutput('hmpscale_out2spia',width = 200,height = 65))
                     ),
                     fluidRow(
-                      column(6,uiOutput('hmpsamp2spia')),
+                      column(6,checkboxInput("hmpsamp2spia", label = "View Heatmap of all samples", value = TRUE)),
                       column(6,h4(""))
                     ),
                     d3heatmapOutput('spiaheatmap',width=550,height=900)),
@@ -250,12 +241,11 @@ ui <- dashboardPage(
                     hr(),
                     downloadButton('dwldspia', 'Download SPIA Results'))),
               
-              box(width = 12, status = "primary",solidHeader = TRUE,title = "Table",
+              box(width = 12, status = "primary",solidHeader = TRUE,title = "SPIA Result",
                   DT::dataTableOutput('spiaop'),textOutput("spiadesc"),DT::dataTableOutput('spiagenes'))
       ),
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       tabItem(tabName = "gogage",
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "GO Heatmap",
@@ -264,7 +254,7 @@ ui <- dashboardPage(
                       column(width = 3, offset = 2,plotOutput('hmpscale_out3',width = 200,height = 65))
                     ),
                     fluidRow(
-                      column(6,uiOutput('hmpsamp3')),
+                      column(6,checkboxInput("hmpsamp3", label = "View Heatmap of all samples", value = TRUE)),
                       column(6,h4(""))
                     ),
                     d3heatmapOutput('goheatmap',width=550,height=900)),
@@ -273,9 +263,6 @@ ui <- dashboardPage(
                       column(6,radioButtons(inputId='gage', label = h5("Select ontology"),
                                             choices = c("Biological Process" = 'BP', "Cellular Component" = 'cc', "Molecular Function" = 'MF'))),
                       column(6,selectInput("go_dd", "GO Selection",c('Upregulated' = "upreg",'Downregulated' = "downreg")))),
-                    #actionButton(inputId = 'ga', label = 'Display Results'),
-                    #bsPopover("ga",title="Note",content= "If you get an error with the heatmap,try refreshing",placement="right",trigger="hover",options=list(container="body")),
-                    #br(),br(),
                     fluidRow( 
                       column(6,downloadButton('downloadgo', 'Download GO Data')),
                       column(6,downloadButton('downloadgogene', 'Download GO Genelist'))),
@@ -287,14 +274,10 @@ ui <- dashboardPage(
                     checkboxInput("checkbox3", label = "Reverse Colors", value = FALSE))),
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Table",
                   DT::dataTableOutput('table4'),textOutput("godesc"),DT::dataTableOutput('x4'))
-              
-              
-              
       ),
       
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       tabItem(tabName = "help",
               h4(p(strong("1. PCA Plot"))),
               h4(p(div("The PCA plot tab displays the biplot by default. You can select the principle component to plot on the x and y axis of the plot from the drop-down menu. You can also specify the number of top genes showing maximum variance to be used as the input for the bioplot as well as the number of genes you want to view in the plot. The ",em("Display variances of PC"),"tab displays the barplot showing the proportion of variance retained by each principle component.","The ",em("3D plot tab"),"displays the 3D plot of the top 3 principle components"))),
@@ -345,9 +328,8 @@ ui <- dashboardPage(
               h4(p(div("Click on",strong("Download GO Data"),"button to download the table as a csv file,",strong("Download GO Genelist")," for the genes associated with each GO category and ",strong("Download GO Heatmap")," for the heatmap associated with each GO term"))),
               h4("Helpful Links:", a("Click Here for information on GAGE", href="http://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-161"))
       )
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+      ######################################################################################################################################
+      
       
     )
   )
