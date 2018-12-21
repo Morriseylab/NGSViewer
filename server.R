@@ -1205,6 +1205,146 @@ server <- function(input, output) {
       spiaheatmapalt()
       dev.off()
     })
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  ################################################################## REACTOME PA ANALYSIS################################################################
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  #Get list of enriched pathways
+  enrichpath = reactive({
+   # withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
+    limmares= datasetInput0.5()
+    deg=deg[abs(deg$fc) >2,]
+    res <- enrichPathway(gene=deg$ENTREZID,pvalueCutoff=0.05, readable=T)
+  })
+  
+  #create different table to display
+  enrichpath2 = reactive({
+    res= enrichpath()
+    res=as.data.frame(res) 
+    res = res %>% dplyr::select(-geneID)
+  })
+  
+  #get list of enriched pathways and display in table
+  output$enrichpath = DT::renderDataTable({
+    input$project
+    input$contrast
+    DT::datatable(enrichpath2(),
+                  extensions = 'Buttons', options = list(
+                    dom = 'Bfrtip',
+                    buttons = list()),
+                  rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
+  })
+  
+  #Display list of genes in each enrichment pathway
+  enrichgenes = reactive({
+    genes=enrichpath()
+    res=as.data.frame(res) 
+    s = input$enrichpath_rows_selected
+    genes = genes[s, , drop=FALSE]
+    genes = genes$geneID
+    genes=gsub("/",", ",genes)
+    return(genes)
+  })
+  
+  #print genelist
+  output$enrichgenes = renderPrint({
+      enrichgenes()
+  })
+  
+  #Create plot for visualizing enrichment results
+  enrichplot = reactive({
+    res= enrichpath()
+    if(input$enrichradio=='barplot'){
+      barplot(res, showCategory = input$ncat)
+    }else if(input$enrichradio=='dotplot'){
+      dotplot(res,showCategory= input$ncat)
+    }else if(input$enrichradio=='enrich'){
+      emapplot(res)
+    }
+  })
+  
+  #Render the plot
+  output$enrichplot <- renderPlot({
+    enrichplot()
+  })
+  
+ #Render the plot
+  output$cnetplot <- renderPlot({
+    res= enrichpath()
+    limmares= datasetInput0.5()
+    genelist= limmares$fc
+    names(genelist)=limmares$ENTREZID
+    cnetplot(res, categorySize="pvalue", foldChange=genelist)
+  })
+  
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  ################################################################## REACTOME PA GSEA ################################################################
+  ########################################################################################################################################################
+  ########################################################################################################################################################
+  #Get list of enriched pathways from GSEA
+  gseapath = reactive({
+    results=fileload()
+    pd=pData(results$eset)
+    org=unique(pd$organism)
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+      org="mouse"
+    }else{
+      org="human"
+    }
+    limmares= datasetInput0.5()
+    genelist= limmares$fc
+    names(genelist)=limmares$ENTREZID
+    genelist = sort(genelist, decreasing = TRUE)
+    y <- gsePathway(genelist, nPerm=10000,pvalueCutoff=0.2,pAdjustMethod="BH", verbose=FALSE,organism=org)
+  })
+  
+  #create different table to display
+  gseapath2 = reactive({
+    res= gseapath()
+    res=as.data.frame(res) 
+  })
+  
+  #Create Results table
+  output$gseares = DT::renderDataTable({
+    input$project
+    input$contrast
+    DT::datatable(gseapath2(),
+                  extensions = 'Buttons', options = list(
+                    dom = 'Bfrtip',
+                    buttons = list()),
+                  rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
+  })
+  
+  #Render the plot emap
+  output$plotemap <- renderPlot({
+    res= gseapath()
+    emapplot(res, color="pvalue")
+  })
+  
+  #Render the plot gsea
+  output$plotgsea <- renderPlot({
+    res= gseapath()
+    gseares=gseapath2()
+    s = input$gseares_rows_selected
+    gseares = gseares[s, , drop=FALSE]
+    id = gseares$ID
+    gseaplot(res, geneSetID = id)
+  })
+  
+  #Render the gsea pathway
+  output$plotpath <- renderPlot({
+    gseares=gseapath2()
+    s = input$gseares_rows_selected
+    gseares = gseares[s, , drop=FALSE]
+    id = gseares$Description
+    limmares= datasetInput0.5()
+    genelist= limmares$fc
+    names(genelist)=limmares$ENTREZID
+    genelist = sort(genelist, decreasing = TRUE)
+    viewPathway(id, readable=TRUE, foldChange=genelist)
+  })
   
   ######################################################################################################################################################
   ######################################################################################################################################################

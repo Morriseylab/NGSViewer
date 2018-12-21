@@ -46,6 +46,11 @@ ui <- dashboardPage(
                               menuSubItem('View Camera results', tabName = 'camera'),
                               menuSubItem(icon=NULL,uiOutput("cameradd"))),
                      menuItem('Pathway Analysis using SPIA', tabName = 'spia', icon = icon('hand-o-right')),
+                     menuItem('Pathway Analysis using Reactome', tabName = 'reactometab', icon = icon('hand-o-right'),
+                              menuSubItem('View ReactomePA results', tabName = 'reactome'),
+                              menuSubItem('View CNET plot', tabName = 'cnet'),
+                              menuSubItem('View EMAP plot', tabName = 'emap'),
+                              menuSubItem('Gene Set Enrichment Analysis', tabName = 'gsea')),
                      menuItem('GO Analysis using GAGE', icon = icon('hand-o-right'),
                               menuSubItem('GAGE Results', tabName = 'gogage')
                      )
@@ -244,8 +249,42 @@ ui <- dashboardPage(
               box(width = 12, status = "primary",solidHeader = TRUE,title = "SPIA Result",
                   DT::dataTableOutput('spiaop'),textOutput("spiadesc"),DT::dataTableOutput('spiagenes'))
       ),
-      ######################################################################################################################################
-      
+     ######################################################################################################################################
+   tabItem(tabName = "reactome", 
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result",
+               fluidRow(
+               column(6,radioButtons("enrichradio", label = h4("Plot Type"),choices = c("Barplot" = 'barplot',"Dotplot" = 'dotplot',"Enrichment Map"='enrich'),selected = 'barplot')),
+               column(6,sliderInput("ncat", "Number of categories to show:",min = 5, max = 20, value = 10,step=1))
+               ),
+               plotOutput("enrichplot", height = 700)),
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Enriched Pathways",
+           DT::dataTableOutput('enrichpath')),
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Genes in pathway",
+               verbatimTextOutput('enrichgenes'))
+   ),
+   ######################################################################################################################################
+   tabItem(tabName = "cnet", 
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using cnetplot",
+               plotOutput('cnetplot', height = 800)
+               )
+   ),
+   ######################################################################################################################################
+   tabItem(tabName = "emap", 
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using cnetplot",
+               plotOutput('plotemap', height = 800)
+           )
+   ),
+   ######################################################################################################################################
+   tabItem(tabName = "gsea", 
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize GSEA result",
+               plotOutput("plotgsea", height = 800)),
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "GSEA Result",
+               DT::dataTableOutput('gseares')),
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize GSEA result",
+               plotOutput("plotpath", height = 800))
+   ),
+   ######################################################################################################################################
+   
       tabItem(tabName = "gogage",
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "GO Heatmap",
