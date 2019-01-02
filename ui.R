@@ -16,7 +16,10 @@ ui <- dashboardPage(
                               ".shiny-output-error { visibility: hidden; }",
                               ".shiny-output-error:before { visibility: hidden; }"
                    ),
-                   tags$head(tags$style(HTML(".sidebar { height: 250vh; overflow-y: auto; }" ))),
+                   tags$head(tags$style(HTML(".sidebar { height: 250vh; overflow-y: auto; }
+                                             .shiny-notification{position: fixed;top: 33%;left: 45%;right: 30%;}
+                                             " )
+                   )),
                    
                    sidebarMenu(
                    menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),

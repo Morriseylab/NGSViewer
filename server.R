@@ -44,7 +44,7 @@ plotTheme <-theme_bw() + theme(axis.title.x = element_text(face="bold", size=12)
                                axis.title.y = element_text(face="bold", size=12),
                                axis.text.y  = element_text(angle=0, vjust=0.5, size=12))
 
-server <- function(input, output) {
+server <- function(input, output, session) {
 
   values <- reactiveValues(authenticated = FALSE)
 
@@ -1212,17 +1212,26 @@ server <- function(input, output) {
   ########################################################################################################################################################
   #Get list of enriched pathways
   enrichpath = reactive({
-   # withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-    limmares= datasetInput0.5()
+    results=fileload()
+    pd=pData(results$eset)
+    org=unique(pd$organism)
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+      org="mouse"
+    }else{
+      org="human"
+    }
+    deg= datasetInput0.5()
     deg=deg[abs(deg$fc) >2,]
-    res <- enrichPathway(gene=deg$ENTREZID,pvalueCutoff=0.05, readable=T)
+    res <- enrichPathway(gene=deg$ENTREZID,pvalueCutoff=0.05, readable=T,organism=org)
   })
   
   #create different table to display
   enrichpath2 = reactive({
+     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     res= enrichpath()
     res=as.data.frame(res) 
     res = res %>% dplyr::select(-geneID)
+  })
   })
   
   #get list of enriched pathways and display in table
@@ -1271,11 +1280,13 @@ server <- function(input, output) {
   
  #Render the plot
   output$cnetplot <- renderPlot({
+    withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     res= enrichpath()
     limmares= datasetInput0.5()
     genelist= limmares$fc
     names(genelist)=limmares$ENTREZID
     cnetplot(res, categorySize="pvalue", foldChange=genelist)
+  })
   })
   
   ########################################################################################################################################################
@@ -1340,10 +1351,20 @@ server <- function(input, output) {
     gseares = gseares[s, , drop=FALSE]
     id = gseares$Description
     limmares= datasetInput0.5()
+    limmares=limmares[is.na(limmares$ENTREZID)==F,]
+    limmares=limmares[!duplicated(limmares$ENTREZID),]
     genelist= limmares$fc
     names(genelist)=limmares$ENTREZID
     genelist = sort(genelist, decreasing = TRUE)
-    viewPathway(id, readable=TRUE, foldChange=genelist)
+    results=fileload()
+    pd=pData(results$eset)
+    org=unique(pd$organism)
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+      org="mouse"
+    }else{
+      org="human"
+    }
+    viewPathway(id, readable=TRUE, foldChange=genelist, organism = org)
   })
   
   ######################################################################################################################################################
