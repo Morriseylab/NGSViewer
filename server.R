@@ -32,6 +32,7 @@ library(limma)
 library(ggrepel)
 library(readxl)
 library(biomaRt)
+library(data.table)
 source("functions.R")
 #Specify user-ids and passwords
 auth=read.csv("data/authentication.csv")
@@ -1761,7 +1762,7 @@ server <- function(input, output, session) {
   # Get gene list from user, annotate to ENSEMBL id and get their expression values
   datasetInput41 = reactive({
     file=input$genelistfile
-    genes=read.table(file$datapath) #get complete gene list as string
+    genes=read.table(file=file$datapath, stringsAsFactors = F) #get complete gene list as string
     df=as.vector(genes$V1)
     df=tolower(df)
     firstup <- function(x) {
@@ -1816,15 +1817,18 @@ server <- function(input, output, session) {
   #create heatmap function for gene-list given by user
   heatmap2 = function(){
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    limma=datasetInput()
     expr = datasetInput41()
-    expr2=data.frame(expr[,-ncol(expr)])
-    top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
+    expr=data.frame(expr[,-ncol(expr)])
+    genelist= rownames(expr)
+    sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
+    expr2= createheatmap(results=fileload(),expr=expr,hmpsamp=input$hmpsamp,contrast=input$contrast)
     validate(
       need(nrow(expr2)>1, "No results")
     )
     if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
-    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym$SYMBOL)}
+    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym$SYMBOL)}
   }
   
   heatmap2alt = function(){
