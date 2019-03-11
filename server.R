@@ -1083,8 +1083,16 @@ server <- function(input, output, session) {
     final_res=datasetInput()
     s=input$spiaop_rows_selected 
     row=spiaid[s, ,drop=FALSE]
-    id=paste("mmu",row$ID,sep="")
-    allgenelist=keggLink("mmu",id) #for each kegg id, get gene list
+    results=fileload()
+    pd=pData(results$eset)
+    org=unique(pd$organism)
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+      id=paste("mmu",row$ID,sep="")
+      allgenelist=keggLink("mmu",id) #for each kegg id, get gene list
+    }else{
+      id=paste("hsa",row$ID,sep="")
+      allgenelist=keggLink("hsa",id) #for each kegg id, get gene list
+    }
     p=strsplit(allgenelist,":")
     genes_entrez=sapply(p,"[",2)
     genelist=final_res[final_res$ENTREZID %in% genes_entrez,]
