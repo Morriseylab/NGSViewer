@@ -1224,7 +1224,7 @@ server <- function(input, output, session) {
     results=fileload()
     pd=pData(results$eset)
     org=unique(pd$organism)
-    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus","mouse")){
       org="mouse"
     }else{
       org="human"
@@ -1256,7 +1256,7 @@ server <- function(input, output, session) {
   
   #Display list of genes in each enrichment pathway
   enrichgenes = reactive({
-    genes=enrichpath()
+    res=enrichpath()
     res=as.data.frame(res) 
     s = input$enrichpath_rows_selected
     genes = genes[s, , drop=FALSE]
@@ -1308,7 +1308,7 @@ server <- function(input, output, session) {
     results=fileload()
     pd=pData(results$eset)
     org=unique(pd$organism)
-    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus","mouse")){
       org="mouse"
     }else{
       org="human"
@@ -1330,17 +1330,21 @@ server <- function(input, output, session) {
   output$gseares = DT::renderDataTable({
     input$project
     input$contrast
+    withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     DT::datatable(gseapath2(),
                   extensions = 'Buttons', options = list(
                     dom = 'Bfrtip',
                     buttons = list()),
                   rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
   })
+  })
   
   #Render the plot emap
   output$plotemap <- renderPlot({
+    withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     res= gseapath()
     emapplot(res, color="pvalue")
+    })
   })
   
   #Render the plot gsea
@@ -1368,7 +1372,7 @@ server <- function(input, output, session) {
     results=fileload()
     pd=pData(results$eset)
     org=unique(pd$organism)
-    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus","mouse")){
       org="mouse"
     }else{
       org="human"
