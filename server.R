@@ -1086,7 +1086,7 @@ server <- function(input, output, session) {
     results=fileload()
     pd=pData(results$eset)
     org=unique(pd$organism)
-    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus")){
+    if(org %in% c("Mus musculus", "Mouse", "Mm","Mus_musculus", "mouse")){
       id=paste("mmu",row$ID,sep="")
       allgenelist=keggLink("mmu",id) #for each kegg id, get gene list
     }else{
