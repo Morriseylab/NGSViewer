@@ -273,7 +273,7 @@ ui <- dashboardPage(
    ),
    ######################################################################################################################################
    tabItem(tabName = "emap", 
-           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using cnetplot",
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using emapplot",
                plotOutput('plotemap', height = 800)
            )
    ),
@@ -283,7 +283,7 @@ ui <- dashboardPage(
                plotOutput("plotgsea", height = 800)),
            box(width = 12, status = "primary",solidHeader = TRUE,title = "GSEA Result",
                DT::dataTableOutput('gseares')),
-           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize GSEA result",
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize Pathway",
                plotOutput("plotpath", height = 800))
    ),
    ######################################################################################################################################

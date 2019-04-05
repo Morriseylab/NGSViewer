@@ -1238,7 +1238,10 @@ server <- function(input, output, session) {
   enrichpath2 = reactive({
      withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     res= enrichpath()
-    res=as.data.frame(res) 
+    res=as.data.frame(res)
+    validate(
+      need(nrow(res) > 0, "No results")
+    )
     res = res %>% dplyr::select(-geneID)
   })
   })
@@ -1257,9 +1260,12 @@ server <- function(input, output, session) {
   #Display list of genes in each enrichment pathway
   enrichgenes = reactive({
     res=enrichpath()
+    validate(
+      need(nrow(as.data.frame(res))>0,"No Enriched Pathways")
+    )
     res=as.data.frame(res) 
     s = input$enrichpath_rows_selected
-    genes = genes[s, , drop=FALSE]
+    genes = res[s, , drop=FALSE]
     genes = genes$geneID
     genes=gsub("/",", ",genes)
     return(genes)
@@ -1273,6 +1279,9 @@ server <- function(input, output, session) {
   #Create plot for visualizing enrichment results
   enrichplot = reactive({
     res= enrichpath()
+    shiny::validate(
+      need(nrow(as.data.frame(res))>0,"No Enriched Pathways")
+    )
     if(input$enrichradio=='barplot'){
       barplot(res, showCategory = input$ncat)
     }else if(input$enrichradio=='dotplot'){
@@ -1291,6 +1300,9 @@ server <- function(input, output, session) {
   output$cnetplot <- renderPlot({
     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
     res= enrichpath()
+    validate(
+      need(nrow(as.data.frame(res))>0,"No Enriched Pathways")
+    )
     limmares= datasetInput0.5()
     genelist= limmares$fc
     names(genelist)=limmares$ENTREZID
@@ -1739,17 +1751,18 @@ server <- function(input, output, session) {
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     pval=datasetInput4()
     top_expr= createheatmap(results=fileload(),expr=datasetInput3(),pval=pval,hmpsamp=input$hmpsamp,contrast=input$contrast)
-    # if(input$projects =="MoGene2_Dave"){
-    #   ct1="Hopx"
-    #   ct2="SPC"
-    # }
-    sym=pval$SYMBOL
+    top_expr=as.data.frame(top_expr)
+    col=colnames(top_expr)
+    top_expr$ENSEMBL=rownames(top_expr)
+    top_expr=inner_join(top_expr,pval,by="ENSEMBL")
+    rownames(top_expr)=top_expr$SYMBOL
+    top_expr=top_expr %>% dplyr::select(col)
     validate(
       need(nrow(top_expr) > 1, "No results")
     )
     if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
-    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
+    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   })
   
   #alternate hearmap function for download
@@ -1781,21 +1794,21 @@ server <- function(input, output, session) {
       substr(x, 1, 1) <- toupper(substr(x, 1, 1))
       x
     }
-    df=firstup(df)
+    genelist=firstup(df)
     results=fileload()
-    pd=pData(results$eset)
-    org=unique(pd$organism)
-    
-    if(org=="human"){
-      dataset="hsapiens_gene_ensembl"
-    }
-    else if(org=="Rat"){
-      dataset="rnorvegicus_gene_ensembl"
-    }
-    else{
-      dataset="mmusculus_gene_ensembl"
-    }
-    ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
+#     pd=pData(results$eset)
+#     org=unique(pd$organism)
+#     
+#     if(org=="human"){
+#       dataset="hsapiens_gene_ensembl"
+#     }
+#     else if(org=="Rat"){
+#       dataset="rnorvegicus_gene_ensembl"
+#     }
+#     else{
+#       dataset="mmusculus_gene_ensembl"
+#     }
+#     ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
     #load limma and voom data
     limma=datasetInput()
     voom=datasetInput3()
@@ -1803,23 +1816,29 @@ server <- function(input, output, session) {
     # user-defined identifier for the gene list
     if(input$selectidentifier=='ensembl')
     {
-      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
+      sym=limma[limma$ENSEMBL %in% genelist,] 
+      sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
+#       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
+#       genelist=genes$ensembl_gene_id
     }
     else if(input$selectidentifier=='entrez')
     {
-      genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
+      sym=limma[limma$ENTREZID %in% genelist,] 
+      sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
+#       genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
+#       genelist=genes$ensembl_gene_id
     }
     else if(input$selectidentifier=='genesym')
     {
-      genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
-      genelist=genes$ensembl_gene_id
+      sym=limma[limma$SYMBOL %in% genelist,] 
+      sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
+#       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
+#       genelist=genes$ensembl_gene_id
     }
-    sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(ENSEMBL,SYMBOL)
     expr_vals=merge(voom,sym,by="row.names")
-    rownames(expr_vals)=expr_vals$Row.names
-    expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
+    rownames(expr_vals)=expr_vals$SYMBOL
+    expr_vals = expr_vals %>% select(-Row.names,-SYMBOL,-ENSEMBL)
+    #expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
     validate(
       need(nrow(expr_vals) > 1, "Please Check Identifier chosen or Select genelist from Raw Expression Data tab")
     )
@@ -1831,26 +1850,26 @@ server <- function(input, output, session) {
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     limma=datasetInput()
     expr = datasetInput41()
-    expr=data.frame(expr[,-ncol(expr)])
-    genelist= rownames(expr)
-    sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
+    #expr=data.frame(expr[,-ncol(expr)])
+#     genelist= rownames(expr)
+#     sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
     expr2= createheatmap(results=fileload(),expr=expr,hmpsamp=input$hmpsamp,contrast=input$contrast)
     validate(
       need(nrow(expr2)>1, "No results")
     )
     if(input$checkbox==TRUE){
-      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym$SYMBOL)}
-    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym$SYMBOL)}
+      d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
+    else{d3heatmap(as.matrix(expr2),distfun=dist2,scale="row",dendrogram=input$clusterby,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   }
   
   heatmap2alt = function(){
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     expr = datasetInput41()
-    expr2=data.frame(expr[,-ncol(expr)])
+    #expr2=data.frame(expr[,-ncol(expr)])
     top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
   if(input$checkbox==TRUE){
-      aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30),labRow = sym)}
-    else{aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30),labRow = sym)}
+      aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
+    else{aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   }
   
   ###################################################
