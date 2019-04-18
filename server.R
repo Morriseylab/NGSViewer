@@ -425,7 +425,10 @@ server <- function(input, output, session) {
     eset <- results$eset
     pData=pData(eset) #get pheno-data
     minexpr=pData$minexpr[1]
-    e <-data.frame(eset@phenoData@data,signal=eset@assayData$exprs[id,])
+    signal=as.data.frame(eset@assayData$exprs[id,])
+    colnames(signal)="signal"
+    signal$id=rownames(signal)
+    e=left_join(pData,signal,by=c('sample_name'='id'))
     if(is.na(dt1$SYMBOL)) #if gene symbol does not exist,use ENSEMBL id
     {genesymbol=dt1$ENSEMBL}
     else{
@@ -1620,16 +1623,17 @@ server <- function(input, output, session) {
   goheatmapup <- reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     top_expr=datasetInput3() 
+    pval=GOHeatup()
     top_expr=top_expr[rownames(top_expr) %in% rownames(pval),]#voom expression data of all genes corresponding to selected row in GO datatable
-    top_expr=heatmapfun(results=fileload(),expr=top_expr,pval=GOHeatup(),file = readexcel(),prj=input$projects,hmplim=input$hmplimgo,hmpsamp=input$hmpsamp3,
+    top_expr=heatmapfun(results=fileload(),expr=as.data.frame(top_expr),pval=GOHeatup(),file = readexcel(),prj=input$projects,hmplim=input$hmplimgo,hmpsamp=input$hmpsamp3,
                         contrast=input$contrast)
-   #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
+    #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
     top_expr <- top_expr[!ind,]
     sym=rownames(top_expr)
     if(input$checkbox3==TRUE){
-      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
+      d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(brewer.pal(n = 9, input$hmpcol3))(30),labRow = rownames(top_expr))}
+    else{d3heatmap(as.matrix(top_expr),distfun=dist2,scale="row",dendrogram=input$clusterby3,xaxis_font_size = 10,colors = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol3)))(30),labRow =rownames(top_expr))}
   })
   
   # render D3heatmap for GO genes
@@ -1664,8 +1668,8 @@ server <- function(input, output, session) {
     ind = apply(top_expr, 1, var) == 0
     top_expr <- top_expr[!ind,]
     if(input$checkbox3==TRUE){
-      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv =TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, hmpcol))(30),labRow = sym)}
-    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, hmpcol)))(30),labRow = sym)}
+      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv =TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol3))(30),labRow = rownames(top_expr))}
+    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol3)))(30),labRow = rownames(top_expr))}
   })
 
   #Download GO heatmap
