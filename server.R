@@ -964,25 +964,30 @@ server <- function(input, output, session) {
   ###### CREATE ENRICHMENT PLOT FROM CAMERA #########
   ###################################################
   ###################################################
+  #Run fgsea on data
+  fgseares = reactive({
+    limma_all=datasetInput0.5()
+    genelist=limma_all$fc
+    names(genelist)=limma_all$ENTREZID
+    results=fileload()
+    org= as.character(unique(pData(results$eset)$organism))
+    cameradd=input$cameradd
+    geneset=findgeneset(org,cameradd)
+    new_res= creategseaobj(geneList = genelist, geneSets = geneset)
+    return(new_res)
+  })
+  
+  #Get fgsea results
+  fgseares2 = reactive({
+    new_res= fgseares()
+    res=new_res@result
+  })
+  
   #Create enrichment plot for the camera term
   eplotcamera = reactive({
-    results=fileload()
-    cameradd=input$cameradd
-    contrast=input$contrast #get user input for contrast/comparison
     s = input$camres_rows_selected
-    dt = geneid() 
-    dt = as.character(dt[s, , drop=FALSE]) 
-    cat= dt$name
-    c=paste('results$camera$',contrast,'$',cameradd,'$indices$',category,sep='') #get camera indices corresponding to the contrast chosen
-    cameraind=eval(parse(text = c))
-    exprsdata=as.data.frame(results$eset@assayData$exprs)
-    features=as.data.frame(pData(featureData(results$eset)))
-    features$id=rownames(features)
-    exprsdata$id=rownames(exprsdata)
-    res2<- inner_join(features,exprsdata,by=c('id'='id'))
-    k=res2$ENTREZID[cameraind]
-    limma_all=datasetInput0.5()
-    #limma=limma[limma$ENTREZID %in% k,]
+    new_res=fgseares()
+    gseaplot2(new_res, geneSetID = new_res$ID[s], title = new_res$Description[s])
     
   })
   
@@ -997,7 +1002,7 @@ server <- function(input, output, session) {
     input$cameradd
     input$contrast
     isolate({
-      DT::datatable(geneid(),
+      DT::datatable(fgseares2(),
                     extensions = c('Buttons','Scroller'),
                     options = list(dom = 'Bfrtip',
                                    searchHighlight = TRUE,

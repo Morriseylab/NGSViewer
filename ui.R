@@ -47,8 +47,8 @@ ui <- dashboardPage(
                      menuItem('Generate Heatmap', tabName = 'heatmap', icon = icon('hand-o-right')),
                      menuItem('GSEA Using Camera', tabName = 'cam', icon = icon('hand-o-right'),
                               menuSubItem('View Camera results', tabName = 'camera'),
-                              menuSubItem(icon=NULL,uiOutput("cameradd"))),
-                              #menuSubItem('Enrichment Plot', tabName = 'cameraeplot')),
+                              menuSubItem(icon=NULL,uiOutput("cameradd")),
+                              menuSubItem('FGSEA Enrichment Plot', tabName = 'cameraeplot')),
                      menuItem('Pathway Analysis using SPIA', tabName = 'spia', icon = icon('hand-o-right')),
                      menuItem('Pathway Analysis using Reactome', tabName = 'reactometab', icon = icon('hand-o-right'),
                               menuSubItem('View ReactomePA results', tabName = 'reactome'),
@@ -236,7 +236,7 @@ ui <- dashboardPage(
    tabItem(tabName = "cameraeplot",
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Enrichment Plot",
                plotOutput("eplotcamera",height=800)),
-           box(width = 12, status = "primary",solidHeader = TRUE,title = "Camera Results",
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "FGSEA Results",
                DT::dataTableOutput('camres'))
    ),
       ######################################################################################################################################
