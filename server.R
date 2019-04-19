@@ -190,6 +190,17 @@ server <- function(input, output, session) {
     textInput(inputId = 'pcslide', label = "Enter number of genes to view in the biplot", value = '0')
   })
   
+  #Drop down menu for pc-plot colorby option
+  output$pcacolorby = renderUI({ 
+    results=fileload()
+    eset=results$eset
+    pd=pData(eset) #get pheno-data
+    pd=pd %>% select(starts_with("var")) #get columns from phenodata that start with "var"
+    kt=as.data.frame(t(na.omit(t(pd)))) #omit columns that have only NA's
+    bpcols=c("maineffect",colnames(kt))
+    selectInput("pcacolorby","Color By",bpcols) #populate drop down menu with the phenodata columns
+  })
+  
   #Checkbox to view ellipses in the PCA plot
   output$ellipse <- renderUI({
     checkboxInput("ellipse", label = "Check to view ellipses", value = FALSE)
@@ -203,19 +214,21 @@ server <- function(input, output, session) {
     y=as.numeric(input$pcayaxes)
     results=fileload()
     v = results$eset
-    pData<-phenoData(v)
+    pData<-pData(v)
+    colorby=input$pcacolorby
+    hab=eval(parse(text = paste0("pData$",colorby,sep="")))
     validate(
       need(input$pcslide, "Enter number of genes to view in biplot")
     )
     if(input$pcslide==0 & input$ellipse==F){
-      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=FALSE, habillage = as.factor(pData$maineffect),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(pData$maineffect)))))+theme(axis.title.x = element_text(face="bold", size=14),
+      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=FALSE, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
                                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
                                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
     }
     else if(input$pcslide==0 & input$ellipse==T){
-        fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(pData$maineffect),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(pData$maineffect)))))+theme(axis.title.x = element_text(face="bold", size=14),
+        fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
                                                                                                                                                                                                                                        axis.title.y = element_text(face="bold", size=14),
                                                                                                                                                                                                                                        legend.text  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                                        legend.title  = element_text(angle=0, vjust=0.5, size=14),
@@ -224,14 +237,14 @@ server <- function(input, output, session) {
 }
       
     #fviz_pca_ind(res.pca, geom = c("point", "text"))}
-    else if(input$pcslide!=0 & input$ellipse==F){fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),habillage = as.factor(pData$maineffect),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(pData$maineffect)))))+theme(axis.title.x = element_text(face="bold", size=14),
+    else if(input$pcslide!=0 & input$ellipse==F){fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
                                                                                                                                                                                                                                                                            axis.title.y = element_text(face="bold", size=14),
                                                                                                                                                                                                                                                                            legend.text  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                                                                            legend.title  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                                                                            plot.title  = element_text(angle=0, vjust=0.5, size=16))
     }
     
-    else{fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.1,habillage = as.factor(pData$maineffect),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(pData$maineffect)))))+theme(axis.title.x = element_text(face="bold", size=14),
+    else{fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.1,habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
                                                                                                                                                                                                                                                                            axis.title.y = element_text(face="bold", size=14),
                                                                                                                                                                                                                                                                            legend.text  = element_text(angle=0, vjust=0.5, size=14),
                                                                                                                                                                                                                                                                            legend.title  = element_text(angle=0, vjust=0.5, size=14),
@@ -945,6 +958,56 @@ server <- function(input, output, session) {
     content = function(file) {
       write.csv(geneid(), file)
     })
+  
+  ###################################################
+  ###################################################
+  ###### CREATE ENRICHMENT PLOT FROM CAMERA #########
+  ###################################################
+  ###################################################
+  #Create enrichment plot for the camera term
+  eplotcamera = reactive({
+    results=fileload()
+    cameradd=input$cameradd
+    contrast=input$contrast #get user input for contrast/comparison
+    s = input$camres_rows_selected
+    dt = geneid() 
+    dt = as.character(dt[s, , drop=FALSE]) 
+    cat= dt$name
+    c=paste('results$camera$',contrast,'$',cameradd,'$indices$',category,sep='') #get camera indices corresponding to the contrast chosen
+    cameraind=eval(parse(text = c))
+    exprsdata=as.data.frame(results$eset@assayData$exprs)
+    features=as.data.frame(pData(featureData(results$eset)))
+    features$id=rownames(features)
+    exprsdata$id=rownames(exprsdata)
+    res2<- inner_join(features,exprsdata,by=c('id'='id'))
+    k=res2$ENTREZID[cameraind]
+    limma_all=datasetInput0.5()
+    #limma=limma[limma$ENTREZID %in% k,]
+    
+  })
+  
+  #Render enrichment plot
+  output$eplotcamera = renderPlot({
+    eplotcamera()
+  })
+  
+  # print out camera results in a table
+  output$camres = DT::renderDataTable({
+    input$camera
+    input$cameradd
+    input$contrast
+    isolate({
+      DT::datatable(geneid(),
+                    extensions = c('Buttons','Scroller'),
+                    options = list(dom = 'Bfrtip',
+                                   searchHighlight = TRUE,
+                                   pageLength = 10,
+                                   lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
+                                   scrollX = TRUE,
+                                   buttons = c('copy', 'print')
+                    ),rownames= FALSE,selection = list(mode = 'single', selected =1),escape=FALSE,caption = "Camera Results")
+    })
+  })
   
   ###################################################
   ###################################################

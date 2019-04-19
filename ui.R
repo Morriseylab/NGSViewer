@@ -48,6 +48,7 @@ ui <- dashboardPage(
                      menuItem('GSEA Using Camera', tabName = 'cam', icon = icon('hand-o-right'),
                               menuSubItem('View Camera results', tabName = 'camera'),
                               menuSubItem(icon=NULL,uiOutput("cameradd"))),
+                              #menuSubItem('Enrichment Plot', tabName = 'cameraeplot')),
                      menuItem('Pathway Analysis using SPIA', tabName = 'spia', icon = icon('hand-o-right')),
                      menuItem('Pathway Analysis using Reactome', tabName = 'reactometab', icon = icon('hand-o-right'),
                               menuSubItem('View ReactomePA results', tabName = 'reactome'),
@@ -80,23 +81,26 @@ ui <- dashboardPage(
       ######################################################################################################################################
       tabItem(tabName = "pcaplot",
               box(
-                width = 10, status = "primary",solidHeader = TRUE,
+                width = 8, status = "primary",solidHeader = TRUE,
+                title = "PCA Plot",
+                textOutput("biplottitle"),br(),
+                plotOutput("biplot",height=700)
+              ),
+              box(
+                width = 4, status = "primary",solidHeader = TRUE,
                 title = "Select Options",
                 fluidRow(
                   column(6,uiOutput("pcaxoptions")),
                   column(6,uiOutput("pcayoptions"))
                 ),
-                br(),textOutput("biplottitle"),br(),
+                br(),
                 fluidRow(
                   column(6,uiOutput("pcipslide")),
                   column(6,uiOutput("pcslide"))
                 ),br(),
-                uiOutput("ellipse")),
-              box(
-                width = 10, status = "primary",solidHeader = TRUE,
-                title = "PCA Plot",
-                plotOutput("biplot",height=600)
-              ),br(),
+                fluidRow(
+                  column(6,uiOutput("pcacolorby")),
+                column(6,uiOutput("ellipse")))),br(),
               fluidRow(
                 column(6,uiOutput("dwldbiplot")))
       ),
@@ -224,9 +228,17 @@ ui <- dashboardPage(
                     br(),
                     downloadButton('downloadcamheatmap', 'Download Heatmap'))),
               
-              box(width = 12, status = "primary",solidHeader = TRUE,title = "Table",
+              box(width = 12, status = "primary",solidHeader = TRUE,title = "Results",
                   DT::dataTableOutput('tablecam'),textOutput("camdesc"),DT::dataTableOutput('campick3'))
    ),#end tabItem
+   ######################################################################################################################################
+   
+   tabItem(tabName = "cameraeplot",
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Enrichment Plot",
+               plotOutput("eplotcamera",height=800)),
+           box(width = 12, status = "primary",solidHeader = TRUE,title = "Camera Results",
+               DT::dataTableOutput('camres'))
+   ),
       ######################################################################################################################################
       tabItem(tabName = "spia", 
               fluidRow(
