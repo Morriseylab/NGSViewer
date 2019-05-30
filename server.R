@@ -1909,7 +1909,7 @@ server <- function(input, output, session) {
     }
     expr_vals=merge(voom,sym,by="row.names")
     rownames(expr_vals)=expr_vals$SYMBOL
-    expr_vals = expr_vals %>% select(-Row.names,-SYMBOL,-ENSEMBL)
+    expr_vals = expr_vals %>% dplyr::select(-Row.names,-SYMBOL,-ENSEMBL)
     #expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
     validate(
       need(nrow(expr_vals) > 1, "Please Check Identifier chosen or Select genelist from Raw Expression Data tab")
