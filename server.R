@@ -6,7 +6,7 @@ library(gage)
 library(gageData)
 library(RColorBrewer)
 library(NMF)
-library(KEGGgraph)
+#library(KEGGgraph)
 library(Biobase)
 library(reshape2)
 library(ggplot2)
@@ -46,9 +46,9 @@ plotTheme <-theme_bw() + theme(axis.title.x = element_text(face="bold", size=12)
                                axis.text.y  = element_text(angle=0, vjust=0.5, size=12))
 
 server <- function(input, output, session) {
-
+  
   values <- reactiveValues(authenticated = FALSE)
-
+  
   # Return the UI for a modal dialog with data selection input. If 'failed'
   # is TRUE, then display a message that the previous value was invalid.
   dataModal <- function(failed = FALSE) {
@@ -61,17 +61,17 @@ server <- function(input, output, session) {
       )
     )
   }
-
+  
   # Show modal when button is clicked.
   # This `observe` is suspended only whith right user credential
-
+  
   obs1 <- observe({
     showModal(dataModal())
   })
-
+  
   # When OK button is pressed, attempt to authenticate. If successful,
   # remove the modal.
-
+  
   obs2 <- observe({
     req(input$ok)
     isolate({
@@ -86,13 +86,13 @@ server <- function(input, output, session) {
         values$authenticated <- TRUE
         obs1$suspend()
         removeModal()
-
+        
       } else {
         values$authenticated <- FALSE
       }
     }
   })
-
+  
   ################################################################
   ################################################################
   ####### LOAD EXCEL AND POPULATE DROP DOWN FOR PROJECTS #########
@@ -157,7 +157,7 @@ server <- function(input, output, session) {
     contrasts=as.list(as.character(unlist(lapply((names(lim)),factor))))
     selectInput("contrast","Select a comparison",contrasts,"pick one")
   })
-
+  
   
   #######################################################################################################################################################
   #######################################################################################################################################################
@@ -206,7 +206,7 @@ server <- function(input, output, session) {
     checkboxInput("ellipse", label = "Check to view ellipses", value = FALSE)
   })
   
-
+  
   #Function for PCA plot
   plotbiplot = reactive({
     res.pca = res_pca()
@@ -222,33 +222,33 @@ server <- function(input, output, session) {
     )
     if(input$pcslide==0 & input$ellipse==F){
       fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=FALSE, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                          axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                          legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                          legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                          plot.title  = element_text(angle=0, vjust=0.5, size=16))
+                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
+                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
     }
     else if(input$pcslide==0 & input$ellipse==T){
-        fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                       axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                       legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                       legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                       plot.title  = element_text(angle=0, vjust=0.5, size=16))
-        
-}
+      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
+                                                                                                                                                                                                                                                   axis.title.y = element_text(face="bold", size=14),
+                                                                                                                                                                                                                                                   legend.text  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                   legend.title  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                   plot.title  = element_text(angle=0, vjust=0.5, size=16))
       
+    }
+    
     #fviz_pca_ind(res.pca, geom = c("point", "text"))}
     else if(input$pcslide!=0 & input$ellipse==F){fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
+                                                                                                                                                                                                                                                                                         axis.title.y = element_text(face="bold", size=14),
+                                                                                                                                                                                                                                                                                         legend.text  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                                                         legend.title  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                                                         plot.title  = element_text(angle=0, vjust=0.5, size=16))
     }
     
     else{fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.1,habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
+                                                                                                                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
+                                                                                                                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
+                                                                                                                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
     }
   })
   
@@ -262,7 +262,7 @@ server <- function(input, output, session) {
     downloadButton('downloadbiplot', 'Download Biplot')
   }) 
   
-#Download function for pca plot
+  #Download function for pca plot
   output$downloadbiplot <- downloadHandler(
     filename = function() {
       paste0("biplot.pdf")
@@ -327,7 +327,7 @@ server <- function(input, output, session) {
                     scrollX = TRUE
                   ))
   })
-
+  
   ###################################################
   ###################################################
   ##################3D PCA PLOT #####################
@@ -364,7 +364,7 @@ server <- function(input, output, session) {
     ll=1:l
     y=1+(ll*15)
     legend3d("topright", legend = levels(groups), pch = 16, col=palette(),cex=1, inset=c(0.02))
-   rglwidget()
+    rglwidget()
   })
   
   ###################################################
@@ -437,21 +437,23 @@ server <- function(input, output, session) {
     results=fileload()
     eset <- results$eset
     pData=pData(eset) #get pheno-data
+    if(is.factor(pData$sample_name)==T){lev=levels(pData$sample_name)}
     minexpr=pData$minexpr[1]
     signal=as.data.frame(eset@assayData$exprs[id,])
     colnames(signal)="signal"
     signal$id=rownames(signal)
     e=left_join(pData,signal,by=c('sample_name'='id'))
+    if(is.factor(pData$sample_name)==T){e$sample_name= factor(e$sample_name, levels = levels(pData$sample_name))}
     if(is.na(dt1$SYMBOL)) #if gene symbol does not exist,use ENSEMBL id
     {genesymbol=dt1$ENSEMBL}
     else{
       genesymbol=dt1$SYMBOL} #get the gene symbol of the row selected
     if(input$minexprline==T){
-      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
+      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color2)))+
         labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
         stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2) + geom_hline(yintercept=minexpr, linetype="dashed", color = "red")}
     else{
-      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color)))+
+      gg=ggplot(e,aes_string(x=input$color,y="signal",col=input$color2))+plotTheme+guides(color=guide_legend(title=as.character(input$color2)))+
         labs(title=genesymbol, x="Condition", y="Expression Value") + geom_point(size=5,position=position_jitter(w = 0.1))+ geom_smooth(method=lm,se=FALSE) +
         stat_summary(fun.y = "mean", fun.ymin = "mean", fun.ymax= "mean", size= 0.3, geom = "crossbar",width=.2)
     }
@@ -614,24 +616,24 @@ server <- function(input, output, session) {
   volcanoplot_out = reactive({
     diff_df=vpt()
     
-   if(input$volcdrop=="signi"){
+    if(input$volcdrop=="signi"){
       # Find and label the top peaks..
       n=input$volcslider
       if(n>0){
-      top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
-      top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
-      
-      a <- list()
-      for (i in seq_len(nrow(top_peaks))) {
-        m <- top_peaks[i, ]
-        a[[i]] <- list(x = m[["logFC"]],y = -log10(m[["adj.P.Val"]]),text = m[["SYMBOL"]],xref = "x",yref = "y",showarrow = FALSE,arrowhead = 0.5,ax = 20,ay = -40)
-      }
-      p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) %>%
-        layout(annotations = a)
+        top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
+        top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
+        
+        a <- list()
+        for (i in seq_len(nrow(top_peaks))) {
+          m <- top_peaks[i, ]
+          a[[i]] <- list(x = m[["logFC"]],y = -log10(m[["adj.P.Val"]]),text = m[["SYMBOL"]],xref = "x",yref = "y",showarrow = FALSE,arrowhead = 0.5,ax = 20,ay = -40)
         }
+        p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) %>%
+          layout(annotations = a)
+      }
       else{
         p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)"))
-          }
+      }
     }
     else if(input$volcdrop=="go"){
       # Find and label the top peaks..
@@ -642,7 +644,7 @@ server <- function(input, output, session) {
         a[[i]] <- list(x = m[["logFC"]],y = -log10(m[["adj.P.Val"]]),text = m[["SYMBOL"]],xref = "x",yref = "y",showarrow = FALSE,arrowhead = 0.5,ax = 20,ay = -40)
       }
       p <- plot_ly(data = diff_df, x = diff_df$logFC, y = -log10(diff_df$adj.P.Val),text = diff_df$SYMBOL, mode = "markers", color = diff_df$group) %>% layout(title ="Volcano Plot",xaxis=list(title="Log Fold Change"),yaxis=list(title="-log10(FDR)")) 
-      }
+    }
     p
   })
   
@@ -650,7 +652,7 @@ server <- function(input, output, session) {
   volcanoplot_dout = reactive({
     diff_df=vpt()
     if(input$volcdrop=="signi"){
-     n=input$volcslider
+      n=input$volcslider
       if(n>0){
         top_peaks <- diff_df[with(diff_df, order(adj.P.Val,logFC)),][1:n,]
         top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(adj.P.Val,-logFC)),][1:n,])
@@ -661,8 +663,8 @@ server <- function(input, output, session) {
       }
     }
     else if(input$volcdrop=="go"){
-          top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
-       p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
+      top_peaks <- diff_df[diff_df$SYMBOL %in% top_peaks2$SYMBOL,]
+      p <- ggplot(data = diff_df, aes(x = diff_df$logFC, y = -log10(diff_df$adj.P.Val))) + geom_point_rast(aes(color=diff_df$group)) +ggtitle("Volcano Plot") + xlab("Log Fold Change") + ylab("-log10(FDR)") +labs(color="") + theme_bw()
     }
     p
   })
@@ -691,7 +693,7 @@ server <- function(input, output, session) {
   })
   
   
- #Download non-interactive volcano plot
+  #Download non-interactive volcano plot
   output$dwldvolcanoplot <- downloadHandler(
     filename = function() {
       paste0("volcano.pdf")
@@ -964,30 +966,25 @@ server <- function(input, output, session) {
   ###### CREATE ENRICHMENT PLOT FROM CAMERA #########
   ###################################################
   ###################################################
-  #Run fgsea on data
-  fgseares = reactive({
-    limma_all=datasetInput0.5()
-    genelist=limma_all$fc
-    names(genelist)=limma_all$ENTREZID
-    results=fileload()
-    org= as.character(unique(pData(results$eset)$organism))
-    cameradd=input$cameradd
-    geneset=findgeneset(org,cameradd)
-    new_res= creategseaobj(geneList = genelist, geneSets = geneset)
-    return(new_res)
-  })
-  
-  #Get fgsea results
-  fgseares2 = reactive({
-    new_res= fgseares()
-    res=new_res@result
-  })
-  
   #Create enrichment plot for the camera term
   eplotcamera = reactive({
+    results=fileload()
+    cameradd=input$cameradd
+    contrast=input$contrast #get user input for contrast/comparison
     s = input$camres_rows_selected
-    new_res=fgseares()
-    gseaplot2(new_res, geneSetID = new_res$ID[s], title = new_res$Description[s])
+    dt = geneid() 
+    dt = as.character(dt[s, , drop=FALSE]) 
+    cat= dt$name
+    c=paste('results$camera$',contrast,'$',cameradd,'$indices$',category,sep='') #get camera indices corresponding to the contrast chosen
+    cameraind=eval(parse(text = c))
+    exprsdata=as.data.frame(results$eset@assayData$exprs)
+    features=as.data.frame(pData(featureData(results$eset)))
+    features$id=rownames(features)
+    exprsdata$id=rownames(exprsdata)
+    res2<- inner_join(features,exprsdata,by=c('id'='id'))
+    k=res2$ENTREZID[cameraind]
+    limma_all=datasetInput0.5()
+    #limma=limma[limma$ENTREZID %in% k,]
     
   })
   
@@ -1002,7 +999,7 @@ server <- function(input, output, session) {
     input$cameradd
     input$contrast
     isolate({
-      DT::datatable(fgseares2(),
+      DT::datatable(geneid(),
                     extensions = c('Buttons','Scroller'),
                     options = list(dom = 'Bfrtip',
                                    searchHighlight = TRUE,
@@ -1040,12 +1037,12 @@ server <- function(input, output, session) {
   output$hmpscale_out2 = renderPlot({
     hmpscaletest(hmpcol=input$hmpcol2,voom=datasetInput3(),checkbox=input$checkbox2)
   })
-
+  
   #create heatmap for heatmap
   camheatmap = reactive({
     dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
-                       contrast=input$contrast)
+                        contrast=input$contrast)
     sym=rownames(top_expr)
     #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
     ind = apply(top_expr, 1, var) == 0
@@ -1076,30 +1073,30 @@ server <- function(input, output, session) {
   })
   
   #Create non-interactive heatmap for download
-    camheatmapalt = reactive({
-      dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-      top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
-                     contrast=input$contrast)
-      sym=rownames(top_expr)
-      #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
-      ind = apply(top_expr, 1, var) == 0
-      top_expr <- top_expr[!ind,]
-      if(input$checkbox2==TRUE){
-        aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
-      else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
+  camheatmapalt = reactive({
+    dist2 <- function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
+    top_expr=heatmapfun(results=fileload(),expr=heatmapcam(),pval=campick2(),file = readexcel(),prj=input$projects,hmplim=input$hmplimcam,hmpsamp=input$hmpsamp2,
+                        contrast=input$contrast)
+    sym=rownames(top_expr)
+    #Remove rows that have variance 0 (This will avoid the Na/Nan/Inf error in heatmap)
+    ind = apply(top_expr, 1, var) == 0
+    top_expr <- top_expr[!ind,]
+    if(input$checkbox2==TRUE){
+      aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol2))(30),labRow = sym)}
+    else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol2)))(30),labRow = sym)}
+  })
+  
+  #Download camera heatmap
+  output$downloadcamheatmap <- downloadHandler(
+    filename = function(){
+      paste0('camera_heatmap','.pdf',sep='')
+    },
+    content = function(file){
+      pdf(file,width=9,height = 14,useDingbats=FALSE, onefile = F)
+      camheatmapalt()
+      dev.off()
     })
-    
-    #Download camera heatmap
-    output$downloadcamheatmap <- downloadHandler(
-      filename = function(){
-        paste0('camera_heatmap','.pdf',sep='')
-      },
-      content = function(file){
-        pdf(file,width=9,height = 14,useDingbats=FALSE)
-        camheatmapalt()
-        dev.off()
-      })
-    
+  
   ########################################################################################################################################################
   ########################################################################################################################################################
   ################################################################## SPIA PATHWAY ANALYSIS################################################################
@@ -1124,17 +1121,17 @@ server <- function(input, output, session) {
     input$runspia
     input$contrast
     input$projects
-   isolate({
-        DT::datatable(spia_op(),escape = FALSE,selection = list(mode = 'single', selected =1),
-                      extensions = c('Buttons','Scroller'),
-                      options = list(
-                        dom = 'RMDCT<"clear">lfrtip',
-                        searchHighlight = TRUE,
-                        pageLength = 10,
-                        lengthMenu = list(c(5, 10, 15, 20, 25, -1), c('5', '10', '15', '20', '25', 'All')),
-                        scrollX = TRUE,
-                        buttons = c('copy', 'print')
-                      ),rownames=FALSE)
+    isolate({
+      DT::datatable(spia_op(),escape = FALSE,selection = list(mode = 'single', selected =1),
+                    extensions = c('Buttons','Scroller'),
+                    options = list(
+                      dom = 'RMDCT<"clear">lfrtip',
+                      searchHighlight = TRUE,
+                      pageLength = 10,
+                      lengthMenu = list(c(5, 10, 15, 20, 25, -1), c('5', '10', '15', '20', '25', 'All')),
+                      scrollX = TRUE,
+                      buttons = c('copy', 'print')
+                    ),rownames=FALSE)
     })
   })
   
@@ -1182,7 +1179,7 @@ server <- function(input, output, session) {
                                  buttons = c('copy', 'print')
                   ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1,caption="Genelist"))
   })
-
+  
   #Download function to download SPIA results as a csv file
   output$dwldspia <- downloadHandler(
     filename = function() { paste(input$projects,'_',input$contrast, '_spia.csv', sep='') },
@@ -1281,7 +1278,7 @@ server <- function(input, output, session) {
       paste0('SPIA_heatmap','.pdf',sep='')
     },
     content = function(file){
-      pdf(file,width=9,height = 14,useDingbats=FALSE)
+      pdf(file,width=9,height = 14,useDingbats=FALSE, onefile = F)
       spiaheatmapalt()
       dev.off()
     })
@@ -1307,14 +1304,14 @@ server <- function(input, output, session) {
   
   #create different table to display
   enrichpath2 = reactive({
-     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-    res= enrichpath()
-    res=as.data.frame(res)
-    validate(
-      need(nrow(res) > 0, "No results")
-    )
-    res = res %>% dplyr::select(-geneID)
-  })
+    withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
+      res= enrichpath()
+      res=as.data.frame(res)
+      validate(
+        need(nrow(res) > 0, "No results")
+      )
+      res = res %>% dplyr::select(-geneID)
+    })
   })
   
   #get list of enriched pathways and display in table
@@ -1344,7 +1341,7 @@ server <- function(input, output, session) {
   
   #print genelist
   output$enrichgenes = renderPrint({
-      enrichgenes()
+    enrichgenes()
   })
   
   #Create plot for visualizing enrichment results
@@ -1367,18 +1364,18 @@ server <- function(input, output, session) {
     enrichplot()
   })
   
- #Render the plot
+  #Render the plot
   output$cnetplot <- renderPlot({
     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-    res= enrichpath()
-    validate(
-      need(nrow(as.data.frame(res))>0,"No Enriched Pathways")
-    )
-    limmares= datasetInput0.5()
-    genelist= limmares$fc
-    names(genelist)=limmares$ENTREZID
-    cnetplot(res, categorySize="pvalue", foldChange=genelist)
-  })
+      res= enrichpath()
+      validate(
+        need(nrow(as.data.frame(res))>0,"No Enriched Pathways")
+      )
+      limmares= datasetInput0.5()
+      genelist= limmares$fc
+      names(genelist)=limmares$ENTREZID
+      cnetplot(res, categorySize="pvalue", foldChange=genelist)
+    })
   })
   
   ########################################################################################################################################################
@@ -1414,19 +1411,19 @@ server <- function(input, output, session) {
     input$project
     input$contrast
     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-    DT::datatable(gseapath2(),
-                  extensions = 'Buttons', options = list(
-                    dom = 'Bfrtip',
-                    buttons = list()),
-                  rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
-  })
+      DT::datatable(gseapath2(),
+                    extensions = 'Buttons', options = list(
+                      dom = 'Bfrtip',
+                      buttons = list()),
+                    rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
+    })
   })
   
   #Render the plot emap
   output$plotemap <- renderPlot({
     withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-    res= gseapath()
-    emapplot(res, color="pvalue")
+      res= gseapath()
+      emapplot(res, color="pvalue")
     })
   })
   
@@ -1585,16 +1582,16 @@ server <- function(input, output, session) {
     input$radio
     input$project
     input$contrast
-   withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
-        DT::datatable(datasetInput8(),
-                      extensions = c('Buttons','Scroller'),
-                      options = list(dom = 'Bfrtip',
-                                     searchHighlight = TRUE,
-                                     pageLength = 10,
-                                     lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
-                                     scrollX = TRUE,
-                                     buttons = c('copy','print')
-                      ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1))
+    withProgress(session = session, message = 'Generating...',detail = 'Please Wait...',{
+      DT::datatable(datasetInput8(),
+                    extensions = c('Buttons','Scroller'),
+                    options = list(dom = 'Bfrtip',
+                                   searchHighlight = TRUE,
+                                   pageLength = 10,
+                                   lengthMenu = list(c(30, 50, 100, 150, 200, -1), c('30', '50', '100', '150', '200', 'All')),
+                                   scrollX = TRUE,
+                                   buttons = c('copy','print')
+                    ),rownames=FALSE,escape=FALSE,selection = list(mode = 'single', selected =1))
     })
   })
   
@@ -1739,14 +1736,14 @@ server <- function(input, output, session) {
       aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv =TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol3))(30),labRow = rownames(top_expr))}
     else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv=TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol3)))(30),labRow = rownames(top_expr))}
   })
-
+  
   #Download GO heatmap
   output$downloadgoheatmap <- downloadHandler(
     filename = function(){
       paste0('GO_heatmap','.pdf',sep='')
     },
     content = function(file){
-      pdf(file,width=9,height = 14,useDingbats=FALSE)
+      pdf(file,width=9,height = 14,useDingbats=FALSE, onefile = F)
       goheatmapupalt()
       dev.off()
     })
@@ -1868,19 +1865,19 @@ server <- function(input, output, session) {
     }
     genelist=firstup(df)
     results=fileload()
-#     pd=pData(results$eset)
-#     org=unique(pd$organism)
-#     
-#     if(org=="human"){
-#       dataset="hsapiens_gene_ensembl"
-#     }
-#     else if(org=="Rat"){
-#       dataset="rnorvegicus_gene_ensembl"
-#     }
-#     else{
-#       dataset="mmusculus_gene_ensembl"
-#     }
-#     ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
+    #     pd=pData(results$eset)
+    #     org=unique(pd$organism)
+    #     
+    #     if(org=="human"){
+    #       dataset="hsapiens_gene_ensembl"
+    #     }
+    #     else if(org=="Rat"){
+    #       dataset="rnorvegicus_gene_ensembl"
+    #     }
+    #     else{
+    #       dataset="mmusculus_gene_ensembl"
+    #     }
+    #     ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
     #load limma and voom data
     limma=datasetInput()
     voom=datasetInput3()
@@ -1890,22 +1887,22 @@ server <- function(input, output, session) {
     {
       sym=limma[limma$ENSEMBL %in% genelist,] 
       sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
-#       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
-#       genelist=genes$ensembl_gene_id
+      #       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='ensembl_gene_id', values =df, mart = ensembl)
+      #       genelist=genes$ensembl_gene_id
     }
     else if(input$selectidentifier=='entrez')
     {
       sym=limma[limma$ENTREZID %in% genelist,] 
       sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
-#       genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
-#       genelist=genes$ensembl_gene_id
+      #       genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
+      #       genelist=genes$ensembl_gene_id
     }
     else if(input$selectidentifier=='genesym')
     {
       sym=limma[limma$SYMBOL %in% genelist,] 
       sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
-#       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
-#       genelist=genes$ensembl_gene_id
+      #       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
+      #       genelist=genes$ensembl_gene_id
     }
     expr_vals=merge(voom,sym,by="row.names")
     rownames(expr_vals)=expr_vals$SYMBOL
@@ -1923,8 +1920,8 @@ server <- function(input, output, session) {
     limma=datasetInput()
     expr = datasetInput41()
     #expr=data.frame(expr[,-ncol(expr)])
-#     genelist= rownames(expr)
-#     sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
+    #     genelist= rownames(expr)
+    #     sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
     expr2= createheatmap(results=fileload(),expr=expr,hmpsamp=input$hmpsamp,contrast=input$contrast)
     validate(
       need(nrow(expr2)>1, "No results")
@@ -1939,7 +1936,7 @@ server <- function(input, output, session) {
     expr = datasetInput41()
     #expr2=data.frame(expr[,-ncol(expr)])
     top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
-  if(input$checkbox==TRUE){
+    if(input$checkbox==TRUE){
       aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
     else{aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   }
@@ -1992,7 +1989,7 @@ server <- function(input, output, session) {
     else{aheatmap(as.matrix(top_expr),distfun=dist2,scale="row",Rowv = TRUE,Colv = TRUE,fontsize = 10,color = colorRampPalette(rev(brewer.pal(n = 9, input$hmpcol)))(30))}
   })
   
-
+  
   # Render d3 heatmap function 
   output$heatmap <- renderD3heatmap({
     input$hmpcol #user input-color palette
@@ -2024,18 +2021,18 @@ server <- function(input, output, session) {
       else if(input$hmip == 'vargenes' ){varheatmap()}
     })
   })
-
+  
   #Download function for heatmaps 
   output$downloadheatmap <- downloadHandler(
     filename = function(){
       paste0('heatmap','.pdf',sep='')
     },
     content = function(file){
-      pdf(file,width=9,height =14,useDingbats=FALSE)
+      pdf(file,width=9,height =14,useDingbats=FALSE, onefile = F)
       if(input$hmip == 'genenum'){heatmapalt()}
       else if(input$hmip == 'geneli'){heatmap2alt()}
       else if(input$hmip == 'vargenes' ){varheatmapalt()}
       dev.off()
     })
-
+  
 }#end of server
