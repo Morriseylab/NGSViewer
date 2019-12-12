@@ -134,8 +134,8 @@ ui <- dashboardPage(
                                  choices = c("None" = 'none',"Upregulated" = 'up', "Downregulated" = 'down', "Both" = 'both'),
                                  selected = 'none'),
                     
-                    sliderInput("lfc", label = h4("Fold Change"), min = 0.5,max = 6, value = 2),
-                    sliderInput("apval", label = h4("P. Value"), min = 0.01,max = 0.2, value =0.05),br(),
+                    sliderInput("lfc", label = h4("Log fold Change"), min = 0.5,max = 6, value = 2),
+                    sliderInput("apval", label = h4("Adjusted P. Value"), min = 0.01,max = 0.2, value =0.05),br(),
                     fluidRow(
                       column(6,downloadButton('dwld','Download results table')),
                       column(6,downloadButton('downloaddotplot', 'Download Dot plot')))
