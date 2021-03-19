@@ -1,5 +1,4 @@
 library(shinydashboard)
-#library(shinyIncubator)
 library(shiny)
 library(shinyBS)
 library(plotly)
@@ -36,7 +35,7 @@ ui <- dashboardPage(
                               menuSubItem('View volcano plot', tabName = 'volcanoplot'),
                               menuSubItem('View Limma results of Multiple Contrasts', tabName = 'multilimma'),
                               menuSubItem(icon=NULL,checkboxInput("check", label = "Display Contrast List", value = FALSE)))
-                   ),#end of sidebar menu
+                   ),
                    conditionalPanel(
                      condition = "input.check ==true",
                      uiOutput("contrastslimma")
@@ -58,12 +57,12 @@ ui <- dashboardPage(
                      menuItem('GO Analysis using GAGE', icon = icon('hand-o-right'),
                               menuSubItem('GAGE Results', tabName = 'gogage')
                      )
-                   ),#end of sidebar menu
+                   ),
                    sidebarMenu(
                      menuItem("Help Page", tabName = "help", icon = icon("hand-o-right")))
   ),#end dashboardSidebar
   
-  ######################################################################################################################################
+  ################################ DASHBOARD BODY ######################################################################
   
   dashboardBody(
     tags$head(
@@ -78,7 +77,7 @@ ui <- dashboardPage(
                 tableOutput("dashdata")
               )
       ),
-      ######################################################################################################################################
+      ################################### PCA PLOT ###############################################################################
       tabItem(tabName = "pcaplot",
               box(
                 width = 8, status = "primary",solidHeader = TRUE,
@@ -104,20 +103,19 @@ ui <- dashboardPage(
               fluidRow(
                 column(6,uiOutput("dwldbiplot")))
       ),
-      ######################################################################################################################################
+      ###################################### DISPLAY VARIANCES###############################################################################
       tabItem(tabName = "var",
               box(width = 10, status = "primary",solidHeader = TRUE,title = "Variances of principal Components",
                   textOutput("pcatitle"),plotOutput("pcaplot_ip",width=700,height=400),br()),
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Amount of Variation explained by each Principle Component",DT::dataTableOutput('pcaplot_tab'))),
       
-      ######################################################################################################################################
+      ###################################### 3D PLOT######################################################################
       tabItem(tabName = "3dplot",h4("3D plot"),br(),br(),rglwidgetOutput("pcaplot3d",width = "850px", height = "750px")),
       
-      ######################################################################################################################################
+      ################################### DEG RESULTS AND DOT PLOT #######################################################################
       tabItem(tabName = "geneselection",
               box(width = 10, status = "primary",solidHeader = TRUE,title = "Project Description",
                   textOutput("pdesc")),
-              
        #Dot plot box
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "Dot Plot of the gene of interest",
@@ -145,7 +143,7 @@ ui <- dashboardPage(
                   h5(p(div(span("Note:fc - Fold Change",style="color:red")))),
                   br(),textOutput("contrdesc"),br(),DT::dataTableOutput('table'))),
       
-      ######################################################################################################################################
+      ###################################### VOLCANO PLOT ###########################################################################
       tabItem(tabName = "volcanoplot",
               box(width = 8, status = "primary",solidHeader = TRUE,title = "Volcano Plot",
                   plotlyOutput("volcanoplot",height=700)),
@@ -153,19 +151,19 @@ ui <- dashboardPage(
                   uiOutput("volcdrop"),br(),uiOutput("volcslider"),br(),
                   downloadButton('dwldvolcanoplot', 'Download Volcano plot')),
                 br(),DT::dataTableOutput('table_volc')),
-      ######################################################################################################################################
+      #################################### MULTIPLE CONTRAST LIMMA RESULTS ######################################################################
       
       tabItem(tabName = "multilimma",DT::dataTableOutput('table_TRUE'),fluidRow(uiOutput("dwldmultitab"))),
       
-      ######################################################################################################################################
+      ####################################### RAW EXPRESSION DATA ################################################################
       
       tabItem(tabName = "voom",DT::dataTableOutput('table3'),
               fluidRow(uiOutput("dwldrawtab"))
       ),
-      ######################################################################################################################################
+      ######################################## PHENO DATA #####################################################################
       
       tabItem(tabName = "phenofile",DT::dataTableOutput('phenofile')),
-      ######################################################################################################################################
+      ###################################### HEATMAP ###########################################################################
       
       tabItem(tabName = "heatmap",
               box(width = 8, status = "primary",solidHeader = TRUE,title = "Heatmap",
@@ -207,7 +205,7 @@ ui <- dashboardPage(
               )#end box
       ),#end tabItem
       
-      ######################################################################################################################################
+      ######################################## CAMERA ##########################################################################
       tabItem(tabName = "camera",
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "Camera Heatmap",
@@ -231,7 +229,7 @@ ui <- dashboardPage(
               box(width = 12, status = "primary",solidHeader = TRUE,title = "Results",
                   DT::dataTableOutput('tablecam'),textOutput("camdesc"),DT::dataTableOutput('campick3'))
    ),#end tabItem
-   ######################################################################################################################################
+   ############################################ CAMERA ENRICHMENT PLOT#####################################################################
    
    tabItem(tabName = "cameraeplot",
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Enrichment Plot",
@@ -239,7 +237,7 @@ ui <- dashboardPage(
            box(width = 12, status = "primary",solidHeader = TRUE,title = "FGSEA Results",
                DT::dataTableOutput('camres'))
    ),
-      ######################################################################################################################################
+      ####################################### SPIA ############################################################################
       tabItem(tabName = "spia", 
               fluidRow(
                 box(width = 8, status = "primary",solidHeader = TRUE,title = "SPIA Heatmap",
@@ -264,7 +262,7 @@ ui <- dashboardPage(
               box(width = 12, status = "primary",solidHeader = TRUE,title = "SPIA Result",
                   DT::dataTableOutput('spiaop'),textOutput("spiadesc"),DT::dataTableOutput('spiagenes'))
       ),
-     ######################################################################################################################################
+     ######################################### REACTOME PA ######################################################################
    tabItem(tabName = "reactome", 
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result",
                fluidRow(
@@ -277,19 +275,19 @@ ui <- dashboardPage(
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Genes in pathway",
                verbatimTextOutput('enrichgenes'))
    ),
-   ######################################################################################################################################
+   ###################################### CNET PLOT###########################################################################
    tabItem(tabName = "cnet", 
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using cnetplot",
                plotOutput('cnetplot', height = 800)
                )
    ),
-   ######################################################################################################################################
+   ################################## EMAP ##################################################################################
    tabItem(tabName = "emap", 
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize enrichment result using emapplot",
                plotOutput('plotemap', height = 800)
            )
    ),
-   ######################################################################################################################################
+   ##################################### GSEA ###################################################################################
    tabItem(tabName = "gsea", 
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize GSEA result",
                plotOutput("plotgsea", height = 800)),
@@ -298,7 +296,7 @@ ui <- dashboardPage(
            box(width = 12, status = "primary",solidHeader = TRUE,title = "Visualize Pathway",
                plotOutput("plotpath", height = 800))
    ),
-   ######################################################################################################################################
+   ####################################### GAGE ######################################################################################
    
       tabItem(tabName = "gogage",
               fluidRow(
@@ -330,7 +328,7 @@ ui <- dashboardPage(
                   DT::dataTableOutput('table4'),textOutput("godesc"),DT::dataTableOutput('x4'))
       ),
       
-      ######################################################################################################################################
+      ######################################## HELP PAGE ###################################################################################
       
       tabItem(tabName = "help",
               h4(p(strong("1. PCA Plot"))),
