@@ -119,13 +119,10 @@ server <- function(input, output, session) {
     user=input$username
     file=read.csv('data/param.csv',stringsAsFactors = F)
     if(user=="allusers"){
-      file=file
-      colnames(file)=c("Project Name","Project Description","Old?(Y/N)","Type(RNA/Microarray)","Username")
-      file=file[order(file$`Project Name`),]
+      file = file %>% rename("Project Name"="projects","Project Description"="desc","Username"="user") %>% arrange(`Project Name`)
     }else{
-      file=file[file$user==user,] %>% dplyr::select(-old:-user)
-      colnames(file)=c("Project Name","Project Description")
-      file=file[order(file$`Project Name`),]
+      file=file[file$user==user,] %>% dplyr::select(-user) %>% 
+        rename("Project Name"="projects","Project Description"="desc") %>% arrange(`Project Name`)
     }
   }, digits = 1)
   
@@ -365,24 +362,18 @@ server <- function(input, output, session) {
   #Drop down menu for dot-plot x-axis grouping
   output$boxplotcol = renderUI({ 
     results=fileload()
-    eset=results$eset
-    pData=pData(eset) #get pheno-data
-    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
-    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
-    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
-    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
+    pData=pData(results$eset) %>% select(maineffect, sample_name,starts_with("var_")) %>% 
+      select(where(~!all(is.na(.))))
+    bpcols=as.list(colnames(pData))
     selectInput("color","Select an Attribute for the X-axis",bpcols) #populate drop down menu with the phenodata columns
   })
   
   #Drop down menu for dot-plot color
   output$boxplotcol2 = renderUI({ 
     results=fileload()
-    eset=results$eset
-    pData=pData(eset) #get pheno-data
-    kc=pData[ , grepl( "var_" , colnames(pData) ) ] #get columns from phenodata that start with "var"
-    kt=as.data.frame(t(na.omit(t(kc)))) #omit columns that have only NA's
-    kc=data.frame(maineffect=pData$maineffect,sample_name=pData$sample_name,kt) #create a dataframe with maineffect and sample_name and non-null columns starting with var
-    bpcols=as.list(as.character(unlist(lapply((colnames(kc)),factor))))
+    pData=pData(results$eset) %>% select(maineffect, sample_name,starts_with("var_")) %>% 
+      select(where(~!all(is.na(.))))
+    bpcols=as.list(colnames(pData))
     selectInput("color2","Color By",bpcols) #populate drop down menu with the phenodata columns
   })
   
@@ -440,7 +431,6 @@ server <- function(input, output, session) {
   output$downloaddotplot <- downloadHandler(
     filename = function() {
       paste0(input$projects, '_dotplot.jpg', sep='') 
-      #paste0("dotplot.jpg")
     },
     content = function(file){
       jpeg(file, quality = 100, width = 800, height = 800)
@@ -460,8 +450,7 @@ server <- function(input, output, session) {
   #Update limma results based on gene selection (upregulated, downregulated, both or none)
   datasetInput = reactive({
     contrast=input$contrast #select contrast
-    limmadata=datasetInput0.5()
-    limmadata=subset(limmadata, select=-c(logFC))
+    limmadata=datasetInput0.5() %>% dplyr::select(-logFC)
     lfc=as.numeric(input$lfc) #get logFC
     apval=as.numeric(input$apval)#get adjusted P.Vals
     if(is.null(input$radio))
@@ -487,7 +476,6 @@ server <- function(input, output, session) {
       d=limmadata
       d = d[which(abs(d$fc) > lfc & d$adj.P.Val < apval),]
     }
-    #limma = as.data.frame(d) #load limma data
     geneid=d$SYMBOL
     url= paste("http://www.genecards.org/cgi-bin/carddisp.pl?gene=",geneid,sep = "")
     if(url=="http://www.genecards.org/cgi-bin/carddisp.pl?gene="){
@@ -495,7 +483,6 @@ server <- function(input, output, session) {
     }else{
       d$link=paste0("<a href='",url,"'target='_blank'>","Link to GeneCard","</a>")}
     d=as.data.frame(d) 
-    #d=as.data.frame(d) %>% select(-t)
     return(d)
   })
   
@@ -536,7 +523,6 @@ server <- function(input, output, session) {
   #Drop down to choose what genes to display on volcano plot
   output$volcdrop <- renderUI({
     selectInput("volcdrop", "Select input type",c('Significant genes' = "signi",'GO genes' = "go"))
-    
   })
   
   #Slider to choose number of genes to display on volcano plot
@@ -546,7 +532,6 @@ server <- function(input, output, session) {
       fluidRow(
         column(6,sliderInput("volcslider", label = h4("Select top number of genes"), min = 0,max = 25, value = 5))
       ))
-    
   })
   
   #Function to assign values to volcano plot points
@@ -802,7 +787,7 @@ server <- function(input, output, session) {
     contrast=input$contrast
     cam=paste("results$camera$",contrast,sep="")
     cam=eval(parse(text=cam))
-    cameradd=as.list(as.character(unlist(lapply((names(cam)),factor))))
+    cameradd=as.list(names(cam))
     selectInput("cameradd","Select a Gene Set",cameradd)
   })
   
@@ -909,26 +894,32 @@ server <- function(input, output, session) {
     })
   
   ###### CREATE ENRICHMENT PLOT FROM CAMERA #########
+  #Run fgsea on data
+  fgseares = reactive({
+    limma_all=datasetInput0.5()
+    genelist=limma_all$fc
+    names(genelist)=limma_all$ENTREZID
+    results=fileload()
+    org= as.character(unique(pData(results$eset)$organism))
+    cameradd=input$cameradd
+    geneset=findgeneset(org,cameradd)
+    new_res= creategseaobj(geneList = genelist, geneSets = geneset)
+    return(new_res)
+  })
   
+  #Get fgsea results
+  fgseares2 = reactive({
+    new_res= fgseares()
+    res=new_res@result
+  })
   #Create enrichment plot for the camera term
   eplotcamera = reactive({
-    results=fileload()
-    cameradd=input$cameradd
-    contrast=input$contrast #get user input for contrast/comparison
     s = input$camres_rows_selected
-    dt = geneid() 
-    dt = as.character(dt[s, , drop=FALSE]) 
-    cat= dt$name
-    c=paste('results$camera$',contrast,'$',cameradd,'$indices$',category,sep='') #get camera indices corresponding to the contrast chosen
-    cameraind=eval(parse(text = c))
-    exprsdata=as.data.frame(results$eset@assayData$exprs)
-    features=as.data.frame(pData(featureData(results$eset)))
-    features$id=rownames(features)
-    exprsdata$id=rownames(exprsdata)
-    res2<- inner_join(features,exprsdata,by=c('id'='id'))
-    k=res2$ENTREZID[cameraind]
-    limma_all=datasetInput0.5()
-    #limma=limma[limma$ENTREZID %in% k,]
+    dt = geneid()
+    dt = dt[s, , drop=FALSE]
+    cat= rownames(dt)
+    new_res=fgseares()
+    gseaplot2(new_res, geneSetID = cat, title = cat)
     
   })
   
@@ -1130,7 +1121,6 @@ server <- function(input, output, session) {
     genesid=spiagenes()  #gene list from camera
     voom=as.data.frame(datasetInput3())#voom data
     genes_spia<-voom[rownames(voom) %in% rownames(genesid),]
-    
   })
   
   #get max and min genes per SPIA term to show on slider
@@ -1768,19 +1758,6 @@ server <- function(input, output, session) {
     }
     genelist=firstup(df)
     results=fileload()
-    #     pd=pData(results$eset)
-    #     org=unique(pd$organism)
-    #     
-    #     if(org=="human"){
-    #       dataset="hsapiens_gene_ensembl"
-    #     }
-    #     else if(org=="Rat"){
-    #       dataset="rnorvegicus_gene_ensembl"
-    #     }
-    #     else{
-    #       dataset="mmusculus_gene_ensembl"
-    #     }
-    #     ensembl = useEnsembl(biomart="ensembl", dataset=dataset)
     #load limma and voom data
     limma=datasetInput()
     voom=datasetInput3()
@@ -1797,20 +1774,15 @@ server <- function(input, output, session) {
     {
       sym=limma[limma$ENTREZID %in% genelist,] 
       sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
-      #       genes <- getBM(attributes=c('ensembl_gene_id','entrezgene'), filters ='entrezgene', values =df, mart = ensembl)
-      #       genelist=genes$ensembl_gene_id
     }
     else if(input$selectidentifier=='genesym')
     {
       sym=limma[limma$SYMBOL %in% genelist,] 
       sym= sym %>% dplyr::select(ENSEMBL,SYMBOL)
-      #       genes <- getBM(attributes=c('ensembl_gene_id','external_gene_name'), filters ='external_gene_name', values =df, mart = ensembl)
-      #       genelist=genes$ensembl_gene_id
     }
     expr_vals=merge(voom,sym,by="row.names")
     rownames(expr_vals)=expr_vals$SYMBOL
     expr_vals = expr_vals %>% dplyr::select(-Row.names,-SYMBOL,-ENSEMBL)
-    #expr_vals=data.frame(expr_vals[,-c(1,(ncol(expr_vals)-1))])
     validate(
       need(nrow(expr_vals) > 1, "Please Check Identifier chosen or Select genelist from Raw Expression Data tab")
     )
@@ -1822,9 +1794,6 @@ server <- function(input, output, session) {
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     limma=datasetInput()
     expr = datasetInput41()
-    #expr=data.frame(expr[,-ncol(expr)])
-    #     genelist= rownames(expr)
-    #     sym=limma[limma$ENSEMBL %in% genelist,] %>% dplyr::select(SYMBOL)
     expr2= createheatmap(results=fileload(),expr=expr,hmpsamp=input$hmpsamp,contrast=input$contrast)
     validate(
       need(nrow(expr2)>1, "No results")
@@ -1837,7 +1806,6 @@ server <- function(input, output, session) {
   heatmap2alt = function(){
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
     expr = datasetInput41()
-    #expr2=data.frame(expr[,-ncol(expr)])
     top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
     if(input$checkbox==TRUE){
       aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
@@ -1852,7 +1820,6 @@ server <- function(input, output, session) {
     results=fileload()
     v = results$eset
     keepGenes <- v@featureData@data
-    #keepGenes <- v@featureData@data %>% filter(!(seq_name %in% c('X','Y')) & !(is.na(SYMBOL)))
     pData<-phenoData(v)
     v.filter = v[rownames(v@assayData$exprs) %in% rownames(keepGenes),]
     Pvars <- apply(v.filter@assayData$exprs,1,var)
