@@ -131,6 +131,7 @@ server <- function(input, output, session) {
     DT::datatable(dashdata(),
                   extensions = 'Buttons', options = list(
                     dom = 'Bfrtip',
+                    pageLength = 30,
                     buttons = list()),
                   rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
   })
