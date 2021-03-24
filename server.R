@@ -115,7 +115,7 @@ server <- function(input, output, session) {
   ################# DISPLAY FILE LIST IN DASHBOARD ###############
   
   #Display file in dashboard
-  output$dashdata<- renderTable({
+  dashdata <- reactive({
     user=input$username
     file=read.csv('data/param.csv',stringsAsFactors = F)
     if(user=="allusers"){
@@ -124,8 +124,16 @@ server <- function(input, output, session) {
       file=file[file$user==user,] %>% dplyr::select(-user) %>% 
         rename("Project Name"="projects","Project Description"="desc") %>% arrange(`Project Name`)
     }
-  }, digits = 1)
+    return(file)
+  })
   
+  output$dashdata = DT::renderDataTable({
+    DT::datatable(dashdata(),
+                  extensions = 'Buttons', options = list(
+                    dom = 'Bfrtip',
+                    buttons = list()),
+                  rownames=FALSE,selection = list(mode = 'single', selected =1),escape=FALSE)
+  })
   ####### LOAD RDATA FILE AND GET CONTRASTS##########
   
   #Load Rdata

@@ -74,7 +74,7 @@ ui <- dashboardPage(
               box(
                 width = 12, status = "primary",solidHeader = TRUE,
                 title = "RNA-Seq Data Sets",
-                tableOutput("dashdata")
+                DT::dataTableOutput("dashdata")
               )
       ),
       ################################### PCA PLOT ###############################################################################
