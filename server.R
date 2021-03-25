@@ -44,6 +44,11 @@ plotTheme <-theme_bw() + theme(axis.title.x = element_text(face="bold", size=12)
                                axis.title.y = element_text(face="bold", size=12),
                                axis.text.y  = element_text(angle=0, vjust=0.5, size=12))
 
+theme_fviz <- theme(axis.title.x = element_text(face="bold", size=14),
+                      axis.title.y = element_text(face="bold", size=14),
+                      legend.text  = element_text(angle=0, vjust=0.5, size=14),
+                      legend.title  = element_text(angle=0, vjust=0.5, size=14),
+                      plot.title  = element_text(angle=0, vjust=0.5, size=16))
 server <- function(input, output, session) {
   
   values <- reactiveValues(authenticated = FALSE)
@@ -212,35 +217,11 @@ server <- function(input, output, session) {
       need(input$pcslide, "Enter number of genes to view in biplot")
     )
     if(input$pcslide==0 & input$ellipse==F){
-      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=FALSE, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
-    }
+      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=FALSE, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme_fviz}
     else if(input$pcslide==0 & input$ellipse==T){
-      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                   axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                   legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                   legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                   plot.title  = element_text(angle=0, vjust=0.5, size=16))
-      
-    }
-    
-    #fviz_pca_ind(res.pca, geom = c("point", "text"))}
-    else if(input$pcslide!=0 & input$ellipse==F){fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                                         axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                                         legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                                         legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                                         plot.title  = element_text(angle=0, vjust=0.5, size=16))
-    }
-    
-    else{fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.1,habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme(axis.title.x = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                                                           axis.title.y = element_text(face="bold", size=14),
-                                                                                                                                                                                                                                                                                                           legend.text  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                                                           legend.title  = element_text(angle=0, vjust=0.5, size=14),
-                                                                                                                                                                                                                                                                                                           plot.title  = element_text(angle=0, vjust=0.5, size=16))
-    }
+      fviz_pca_ind(res.pca, repel=T,geom='point',label='var',addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.2, habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme_fviz}
+    else if(input$pcslide!=0 & input$ellipse==F){fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme_fviz}
+    else{fviz_pca_biplot(res.pca,repel=T, label=c("var","ind"),addEllipses=T,ellipse.type="confidence",ellipse.alpha=0.1,habillage = as.factor(hab),pointsize = 3.35,axes=c(x,y),select.var = list(contrib = as.numeric(input$pcslide)))+scale_shape_manual(values = c(rep(19,length(unique(hab)))))+theme_fviz}
   })
   
   #plotting function for pca plot
