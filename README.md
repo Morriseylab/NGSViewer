@@ -1,5 +1,5 @@
 # NGSViewer
-R Shiny website for viewing RNA-Seq and microarray data analysed using our [pipeline.](https://github.com/Morriseylab/scripts) 
+R Shiny website for viewing RNA-Seq and microarray data analysed using our [pipeline.](https://github.com/Morriseylab/scripts) or using the RNASeqAnalysis.Rmd file.
 
 ## Introduction
 NGSViewer reads in the expression data, sample data, feature annotation and GSEA results for both RNA-Seq and Microarray datasets as an RData object and enables users to view and interact with their data
