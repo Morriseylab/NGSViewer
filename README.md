@@ -15,12 +15,12 @@ If you need help installing the above or getting started, refer to [this](https:
 Run the following commands in R to install all required packages
 ```
 install.packages(c("devtools","shiny","shinydashboard","shinyjs","shinyBS","RColorBrewer","reshape2","ggplot2","ggrepel",
-                   "dplyr","tidyr","plotly","htmlwidgets","DT","shinyRGL","rgl","rglwidget","readxl","png","FactoMineR","factoextra"
+                   "dplyr","tidyr","plotly","htmlwidgets","DT","shinyRGL","rgl","rglwidget","readxl","png","FactoMineR","factoextra",
                     "data.table","NMF"))
 
 ## try http:// if https:// URLs are not supported
-BiocManager::install("biomaRt","Biobase","SPIA","AnnotationDbi","org.Mm.eg.db","gage","gageData","KEGGgraph","KEGGREST",
-                  "GO.db","limma""ReactomePA")
+BiocManager::install(c("biomaRt","Biobase","SPIA","AnnotationDbi","org.Mm.eg.db","gage","gageData","KEGGgraph","KEGGREST",
+                  "GO.db","limma","ReactomePA"))
                   
 devtools::install_github("rstudio/d3heatmap")
 ```
