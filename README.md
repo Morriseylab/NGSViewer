@@ -19,9 +19,8 @@ install.packages(c("devtools","shiny","shinydashboard","shinyjs","shinyBS","RCol
                     "data.table","NMF"))
 
 ## try http:// if https:// URLs are not supported
-source("https://bioconductor.org/biocLite.R")
-biocLite(c("biomaRt","Biobase","SPIA","AnnotationDbi","org.Mm.eg.db","gage","gageData","KEGGgraph","KEGGREST",
-                  "GO.db","limma""ReactomePA"))
+BiocManager::install("biomaRt","Biobase","SPIA","AnnotationDbi","org.Mm.eg.db","gage","gageData","KEGGgraph","KEGGREST",
+                  "GO.db","limma""ReactomePA")
                   
 devtools::install_github("rstudio/d3heatmap")
 ```
