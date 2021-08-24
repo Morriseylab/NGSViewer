@@ -7,6 +7,7 @@ library(shinyjs)
 library(rglwidget)
 library(SPIA)
 options(shiny.sanitize.errors = FALSE)
+options(shiny.maxRequestSize=600*1024^2) 
 ui <- dashboardPage(
   dashboardHeader(title = "NGS Data Analysis Web Interface",titleWidth = 350),
   dashboardSidebar(width = 350,
@@ -22,7 +23,15 @@ ui <- dashboardPage(
                    
                    sidebarMenu(
                    menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-                   uiOutput("projects"),
+                   radioButtons("filetype", label = h4("Select file input type"),inline=F,choices = list( "Select from list" = 'list',"Upload RData" = 'upload'),selected = 'list'),
+                   conditionalPanel(
+                      condition = "input.filetype == 'list'",
+                      uiOutput("projects"),
+                   ),
+                   conditionalPanel(
+                      condition = "input.filetype == 'upload'",
+                      fileInput('rdatafileupload', 'Upload RData File')
+                   ),
                    fluidRow(
                      column(12,uiOutput("contrasts"))
                    ),

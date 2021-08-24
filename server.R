@@ -144,8 +144,13 @@ server <- function(input, output, session) {
   
   #Load Rdata
   fileload <- reactive({
-    inFile = paste('data/',as.character(input$projects),'.RData',sep = '')
-    load(inFile)
+    if(input$filetype == 'list'){
+        inFile = paste('data/',as.character(input$projects),'.RData',sep = '')
+        load(inFile)
+      }else{
+        file=input$rdatafileupload
+        load(file$datapath)
+      }
     loaddata=results
     return(loaddata)
   })
