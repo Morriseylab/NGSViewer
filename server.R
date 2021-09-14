@@ -1800,7 +1800,7 @@ server <- function(input, output, session) {
   
   heatmap2alt = function(){
     dist2 = function(x, ...) {as.dist(1-cor(t(x), method="pearson"))}
-    expr = datasetInput41()
+    expr2 = datasetInput41()
     top_expr= createheatmap(results=fileload(),expr=expr2,hmpsamp=input$hmpsamp,contrast=input$contrast)
     if(input$checkbox==TRUE){
       aheatmap(as.matrix(expr2),distfun=dist2,scale="row",Rowv=TRUE,Colv=TRUE,fontsize = 10,color = colorRampPalette(brewer.pal(n = 9, input$hmpcol))(30))}
