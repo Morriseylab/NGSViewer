@@ -24,7 +24,7 @@ BiocManager::install(c("biomaRt","Biobase","SPIA","AnnotationDbi","org.Mm.eg.db"
                   
 devtools::install_github("rstudio/d3heatmap")
 ```
-An alternative is to use the Dockerfile using [Shinyproxy](https://github.com/openanalytics/shinyproxy)
+An alternative is to use the Dockerfile using [Shinyproxy](https://github.com/openanalytics/shinyproxy). Docker container can be found in [dockerhub](https://hub.docker.com/repository/docker/apoorvababu/ngs_viewer)
 
 ## Input Data format
 Analyse your data using the pipeline and save the results as an RData file. Please note that the object should always be saved as **results** and filename should match the project name specified in the param.csv file. Also, the eset created by limma has a slot for phenodata extracted using the PData function. The phenodata must absolutely have the **sample_name** and **maineffect** column. Sample names must be same and in the same order as expression data. maineffect column refers to the variable or the effect that is being tested.
